@@ -1,0 +1,30 @@
+#
+# PRELIMINARIES
+#
+# The mongodb (and ui) services need to be instantiated first. These are
+# "immortal" in as much as their lifetime continues beyond the epochs of
+# persair.
+#
+# The persair application itself is dockerized and can be run from a
+# container.
+#
+
+# Build (for fish shell syntax!)
+set UID (id -u)
+docker build --build-arg UID=$UID -t local/persair .
+
+# Start up the mongodb (and ui)
+docker-compose up
+
+# Run persair (with support for source debugging)
+docker run --rm -it --name persair                                              \
+        --network persair_pfmongo                                                 \
+        -e ReadWriteKey=tanguro                                                 \
+        -e MD_DB=tanguro                                                        \
+        -e DBauthPath=/home/dicom/services/pfmongo.json                           \
+        -e MD_URI=mongodb://pfmongo-db:27017                                      \
+        -e MD_username=admin                                                    \
+        -e MD_password=admin                                                    \
+        -v $PWD/persair:/usr/local/lib/python3.11/site-packages/persair         \
+        local/persair persair
+
