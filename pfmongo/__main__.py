@@ -105,7 +105,7 @@ def main(argv=None) -> Literal[1, 0]:
     options:Namespace           = parser_interpret(parser, argv)
     if earlyExit_check(options): return 1
 
-    # Setup the mongodb object
+    # Create the mongodb object
     mongodb:pfmongo.Pfmongo     = pfmongo.Pfmongo(options)
 
     # and run it!
