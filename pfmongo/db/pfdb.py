@@ -1,3 +1,4 @@
+from    argparse            import Namespace
 from    typing              import Any, List, TypedDict
 from    pydantic            import BaseModel, Field
 
@@ -17,12 +18,16 @@ import  pymongo
 from    pymongo             import MongoClient
 from    pymongo.database    import Database
 from    pymongo.collection  import Collection
+from    pymongo             import results
 
 from    motor               import motor_asyncio as AIO
 
+import  hashlib
+import  copy
+
 class mongoDB():
 
-    def getDB(self) -> Database[Any]:
+    def getDB(self) -> AIO.AsyncIOMotorDatabase:
         return self.DB
 
     async def connectDB(self, DBname:str) -> dict:
@@ -45,6 +50,15 @@ class mongoDB():
         }
         return d_ret
 
+    def insert_one_response(self, d_resp:dict) -> dict:
+        d_data:dict         = {
+                'status':   False,
+                'document': d_resp
+        }
+        if 'acknowledged' in d_resp:
+            d_data['status'] = d_resp['acknowledged']
+        return d_data
+
     async def insert_one(self, **kwargs) -> dict[bool, dict]:
         d_document:dict     = {}
         d_data:dict         = {
@@ -62,8 +76,7 @@ class mongoDB():
         ld_collection:list = [d for d in self.ld_collection
                                 if d['name'] == intoCollection]
         for d in ld_collection:
-            d_data['document']  = await d['collection'].document_add(d_document)
-            d_data['status']    = True
+            d_data          = self.insert_one_response(await d['collection'].document_add(d_document))
         return d_data
 
     async def collection_add(self, name:str) -> bool:
@@ -95,37 +108,80 @@ class mongoDB():
         :return: None -- this is a constructor
         """
         settingsMongo:settings.Mongo    = settings.Mongo()
-        DBname:str                      = 'default'
+        args:Namespace                  = Namespace()
 
         for k,v in kwargs.items():
-            if k == 'name'              : DBname            = v
             if k == 'settings'          : settingsMongo     = v
+            if k == 'args'              : args              = v
 
         self.Mongo:AIO.AsyncIOMotorClient = AIO.AsyncIOMotorClient(
                                         settingsMongo.MD_URI,
                                         username    = settingsMongo.MD_username,
                                         password    = settingsMongo.MD_password
                                 )
-        #self.Mongo:MongoClient  = MongoClient(
-        #                                settingsMongo.MD_URI,
-        #                                username    = settingsMongo.MD_username,
-        #                                password    = settingsMongo.MD_password
-        #                        )
         self.ld_collection:list[dict]   = []
+        self.args                       = args
 
     async def connect(self, DBname:str) -> None:
-        self.d_DBref:dict               = await self.connectDB(DBname)
-        self.DB:Database[Any]           = self.d_DBref['DB']
+        self.d_DBref:dict                   = await self.connectDB(DBname)
+        self.DB:AIO.AsyncIOMotorDatabase    = self.d_DBref['DB']
 
 class mongoCollection():
 
-    def search_on(self, d_query:dict) -> list:
-        l_results:list[dict[str, Any]] = list(self.collection.find(d_query))
-        return l_results
+    async def search_on(self, d_query:dict) -> list:
+        l_hits:list                     = []
+        hits:AIO.AsyncIOMotorCursor     = self.collection.find(d_query)
+        async for hit in hits:
+            l_hits.append(hit)
+        # pudb.set_trace()
+        return l_hits
+
+    def hash_addToDocument(self, d_doc:dict, l_onlyUsekeys:list = []) -> dict:
+        d_newDict:dict      = copy.deepcopy(d_doc)
+        d_toHash:dict       = {}
+        if l_onlyUsekeys:
+            d_toHash        = {k: d_doc[k] for k in l_onlyUsekeys}
+        else:
+            d_toHash        = d_doc
+        d_sorted:dict       = dict(sorted(d_toHash.items()))
+        hash                = hashlib.sha256(str(d_sorted).encode()).hexdigest()
+        d_newDict['hash']   = hash
+        return d_newDict
+
+    async def is_duplicate(self, d_doc:dict) -> bool:
+        b_ret:bool          = False
+        if not 'hash' in d_doc.keys():
+            return b_ret
+        l_hits:list         = await self.search_on({
+                                    'hash':     d_doc['hash']
+                                })
+        if len(l_hits):
+            b_ret           = True
+        return b_ret
 
     async def document_add(self, d_data:dict) -> dict:
-        self.collection.insert_one(d_data)
-        return d_data
+        # pudb.set_trace()
+        d_resp:dict         = {
+                'acknowledged': False,
+                'inserted_id':  "-1"
+        }
+        if self.hash_addToDocument:
+            d_data          = self.hash_addToDocument(d_data)
+        if await self.is_duplicate(d_data) and self.noDuplicates:
+           d_resp['error']  = 'Duplicate document hash found.'
+        else:
+            resp:results.InsertOneResult = await self.collection.insert_one(d_data)
+            d_resp = {
+                'acknowledged': resp.acknowledged,
+                'inserted_id':  str(resp.inserted_id)
+            }
+        return d_resp
+
+    async def collectionNames_list(self, cursor: AIO.AsyncIOMotorCursor) -> list:
+        l_collection:list   = []
+        async for name in cursor:
+            l_collection.append(name)
+        return l_collection
 
     async def connectCollection(self, collection:str) -> dict:
         """
@@ -134,155 +190,30 @@ class mongoCollection():
         bool exist_already/not_exist in a dictionary.
 
         :param mongocollection: the name of the collection
-        :return: a dictionary with the collection, an element count, and a status
+        :return: a dictionary with the collection, an element count, and
+                    a status
         """
-        d_ret:dict  = {
-            'exists':       True if collection in self.DB.list_collection_names() else False,
+
+        l_collection:list   = await self.DB.list_collection_names()
+        d_ret:dict          = {
+            'exists':       True if collection in l_collection else False,
             'interface':    self.DB[collection],
             'elements':     0
         }
         if d_ret['exists']:
-            d_ret['elements']   = d_ret['collection'].find().count()
+            filter:dict       = {}
+            d_ret['elements'] = await d_ret['interface'].count_documents(filter)
         return d_ret
 
     def __init__(self, DBobject:mongoDB) -> None:
-        self.DB:Database[Any]           = DBobject.getDB()
-        #self.d_collection:dict          = await self.connectCollection(name)
-        #self.collection:Collection[Any] = self.d_collection['interface']
+        self.DB:AIO.AsyncIOMotorDatabase    = DBobject.getDB()
+        self.d_collection:dict              = {}
+        self.noDuplicates:bool              = DBobject.args.noDuplicates
+        self.addHashToDocument              = DBobject.args.useHashes
 
     async def connect(self, name:str) -> None:
-        self.d_collection:dict          = await self.connectCollection(name)
-        self.collection:Collection[Any] = self.d_collection['interface']
+        self.d_collection:dict  = await self.connectCollection(name)
+        self.collection:AIO.AsyncIOMotorCollection \
+                                = self.d_collection['interface']
 
-
-class PFdb_mongo():
-    """
-    A mongo DB wrapper/interface object
-    """
-
-    def APIkeys_readFromFile(self, keyName:str) \
-        -> dict[str, bool | str | dict[str, dict[Any, Any]]]:
-        """
-        Read a read/write key pair from a named <keyName> in
-        the db init file (if it exists).
-
-        Args:
-            keyName (str): the key name to read in the db init.
-
-        Return
-            dict[str, bool | dict[Any, Any]]: The Read/Write key pair with
-                                              bool 'status'
-        """
-        d_keys:dict     =   {
-            'status'    : False,
-            'message'   : 'DB init file not found.',
-            'init':     {
-                'keys'  : {}
-            },
-            'keyName'   : keyName
-        }
-        d_data:dict     = {}
-        if not self.keyInitPath.is_file():
-            return d_keys
-        with open(str(self.keyInitPath), 'r') as f:
-            try:
-                d_data:dict = json.load(f)
-                if keyName in d_data:
-                    d_data[keyName]['readwritekeys']  = keyName
-                    d_keys['status']        = True
-                    d_keys['init']['keys']  = d_data[keyName]
-                    d_keys['message']       = f'<keyName> "{keyName}" successfully loaded.'
-                else:
-                    d_keys['message']   = f'Init data does not have <keyName> {keyName}.'
-            except:
-                d_keys['message']   = f'Could not interpret key file {self.keyInitPath}.'
-        return d_keys
-
-    def Mongo_connectDB(self, DBname:str) -> dict:
-        """
-        Connect / create the DB.
-
-        Args:
-            DBname (str): the DB name
-
-        Returns:
-            dict[str, bool | Database[Any]]: DB -- the database
-                                               bool -- False if DB is not yet created
-        """
-        d_ret:dict  = {
-            'status':   True if DBname in self.Mongo.list_database_names() else False,
-            'DB':       self.Mongo[DBname]
-        }
-        return d_ret
-
-    def Mongo_connectCollection(self, mongocollection:str) -> dict:
-        """
-        Simply connect to a named "collection" in a mongoDB and return
-        the collection and its status.
-
-        :param mongocollection: the name of the collection
-        :return: a dictionary with the collection and a status
-        """
-        d_ret:dict  = {
-            'status':       True if mongocollection in self.DB.list_collection_names() else False,
-            'collection':   self.DB[mongocollection]
-        }
-        return d_ret
-
-    def readwriteKeys_inCollectionGet(
-            self,
-            d_readwrite:dict,
-            collectionExists:bool
-    ) -> dict|None:
-        if not collectionExists:
-            self.collection.insert_one(d_readwrite['init']['keys'])
-        d_collectionData    = self.collection.find_one({'readwritekeys': d_readwrite['keyName']})
-        return d_collectionData
-
-    def key_get(self, name:str) -> dict:
-        """
-        Get an access "key" from the main class. This explictly returns a
-        dictionary since the self.key member variable can be either dict or
-        None which can be flagged by the LSP.
-
-        :param name: the key "name" to lookup
-        :return: a dictionary containing the key value (or an error dictionary)
-        """
-        ret:dict    = {
-                "error": f"key {name} not found"
-        }
-        if self.keys:
-            if name in self.keys:
-                ret = self.keys[name]
-        return ret
-
-    def __init__(self,
-                 settingsKeys: settings.Keys,
-                 settingsMongo: settings.Mongo) -> None:
-        """
-        Main database constructor.
-
-        :param settingsKeys: a collection of default configuration settings
-        :param settingsMongo: a collection of settings relevant to the mongoBD
-        :return: the object
-        """
-
-        self.keyInitPath        = Path(settingsKeys.DBauthPath)
-        self.Mongo              = MongoClient(settingsMongo.MD_URI,
-                                              username  = settingsMongo.MD_username,
-                                              password  = settingsMongo.MD_password)
-
-        # Read the API read/write keys from self.keyInitPath
-        # and ReadWriteKey collection
-        # --- this is used only to instantiate the keys in the monogoDB
-        d_readwrite: dict[str, bool | str | dict[Any, Any]] = \
-            self.APIkeys_readFromFile(settingsKeys.ReadWriteKey)
-
-        # Connect to the DB
-        self.DB:Database[Any]               = self.Mongo_connectDB(settingsMongo.MD_DB)['DB']
-
-        # Connect to the collection
-        d_collection:dict                   = self.Mongo_connectCollection('sensors')
-        self.collection:Collection[Any]     = d_collection['collection']
-        self.keys = self.readwriteKeys_inCollectionGet(d_readwrite, d_collection['status'])
 
