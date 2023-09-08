@@ -99,9 +99,11 @@ def earlyExit_check(args:Namespace) -> int:
 
 def main(argv=None) -> Literal[1, 0]:
 
-    pudb.set_trace()
+    # pudb.set_trace()
     # Preliminary setup
-    parser:ArgumentParser       = parser_setup('A client for interacting with monogo DBs')
+    parser:ArgumentParser       = parser_setup(
+                                    'A client for interacting with monogo DBs'
+                                )
     options:Namespace           = parser_interpret(parser, argv)
     if earlyExit_check(options): return 1
 
