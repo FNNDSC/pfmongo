@@ -199,16 +199,13 @@ class Pfmongo:
 
         # attach a comms API to the mongo db
         self.dbAPI:pfdb.mongoDB             = pfdb.mongoDB(
-                                                    name     = self.args.DBname,
                                                     settings = settings.mongosettings
                                             )
 
-        # an aiohttp session
-        self._session               = aiohttp.ClientSession()
         self.responseData:responseModel.mongodbResponse = responseModel.mongodbResponse()
 
-    async def close(self) -> None:
-        await self._session.close()
+    async def connectDB(self) -> None:
+        await self.dbAPI.connectDB(self.args.DBname)
 
     def jsonFile_intoDictRead(self) -> dict[bool,dict]:
         d_json:dict     = {
@@ -227,14 +224,15 @@ class Pfmongo:
         pudb.set_trace()
         d_data:dict             = {}
 
+        await self.dbAPI.connect(self.args.DBname)
         self.dbAPI.collection_add(self.args.collectionName)
 
         if self.args.jsonFile:
             d_json:dict         = self.jsonFile_intoDictRead()
             if d_json['status']:
-                self.dbAPI.insert_one(
+                await self.dbAPI.insert_one(
                         intoCollection  = self.args.collectionName,
-                        document        = d_json
+                        document        = d_json['data']
                 )
 
 
@@ -265,6 +263,5 @@ class Pfmongo:
 #            )
 #
         # Close this comms session
-        await self.close()
         self.responseData   = responseModel.mongodbResponse()
 
