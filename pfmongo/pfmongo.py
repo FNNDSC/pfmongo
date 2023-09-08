@@ -1,8 +1,6 @@
 # Turn off all logging for modules in this libary.
 import logging
 
-from pytest import fail
-
 logging.disable(logging.CRITICAL)
 
 # System imports
@@ -63,6 +61,8 @@ package_description:str = f"""
 
 package_CLIself = '''
         [--mongodbinit <init.json>]                                             \\
+        [--useHashes]                                                           \\
+        [--noDuplicates]                                                        \\
         [--useDB <DBname>]                                                      \\
         [--useCollection <collectionName>]                                      \\
         [--addDocument <document.json>]                                         \\
@@ -74,11 +74,12 @@ package_argSynopsisSelf = f"""
         {C.YELLOW}[--mongodbinit <init.json>]{C.NO_COLOUR}
         The mongodb initialization file.
 
-        {C.YELLOW}[--version]{C.NO_COLOUR}
-        If specified, print app name/version.
+        {C.YELLOW}[--useHashes]{C.NO_COLOUR}
+        If specified, add a hash of the document to the record when adding.
 
-        {C.YELLOW}[--man]{C.NO_COLOUR}
-        If specified, print this help/man page.
+        {C.YELLOW}[--noDuplicates]{C.NO_COLOUR}
+        If specified, do not add a document to a collection if an existing
+        document has the same hash.
 
         {C.YELLOW}[--useDB <DBname>]{C.NO_COLOUR}
         Use the data base called <DBname>.
@@ -92,6 +93,11 @@ package_argSynopsisSelf = f"""
         {C.YELLOW}[--searchOn <searchExp>]{C.NO_COLOUR}
         Search for <searchExp> (see below) in the <DBname>/<collectionName>.
 
+        {C.YELLOW}[--man]{C.NO_COLOUR}
+        If specified, print this help/man page.
+
+        {C.YELLOW}[--version]{C.NO_COLOUR}
+        If specified, print app name/version.
 """
 
 package_CLIfull             = package_CLIself
@@ -110,6 +116,18 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
                     help    = "JSON formatted file containing mongodb initialization",
                     dest    = 'mongodbinit',
                     default = '')
+
+    parserSelf.add_argument("--useHashes",
+                    help    = "add hashes to inserted documents",
+                    dest    = 'useHashes',
+                    default = False,
+                    action  = 'store_true')
+
+    parserSelf.add_argument("--noDuplicates",
+                    help    = "do not allow duplicate (hashed) documents",
+                    dest    = 'noDuplicates',
+                    default = False,
+                    action  = 'store_true')
 
     parserSelf.add_argument("--version",
                     help    = "print name and version",
@@ -192,17 +210,19 @@ class Pfmongo:
     def  __init__(self, args, **kwargs) -> None:
 
         if type(args) is dict:
-            parser:ArgumentParser           = parser_setup('Setup client using dict')
-            self.args:Namespace             = parser_JSONinterpret(parser, args)
+            parser:ArgumentParser      = parser_setup('Setup client using dict')
+            self.args:Namespace        = parser_JSONinterpret(parser, args)
         if type(args) is Namespace:
-            self.args:Namespace             = args
+            self.args:Namespace        = args
 
         # attach a comms API to the mongo db
-        self.dbAPI:pfdb.mongoDB             = pfdb.mongoDB(
-                                                    settings = settings.mongosettings
-                                            )
+        self.dbAPI:pfdb.mongoDB         = pfdb.mongoDB(
+                                            settings    = settings.mongosettings,
+                                            args        = self.args
+                                        )
 
-        self.responseData:responseModel.mongodbResponse = responseModel.mongodbResponse()
+        self.responseData:responseModel.mongodbResponse = \
+                responseModel.mongodbResponse()
 
     async def connectDB(self) -> None:
         await self.dbAPI.connectDB(self.args.DBname)
@@ -220,21 +240,36 @@ class Pfmongo:
             d_json['data']      = str(e)
         return d_json
 
+    def responseData_build(self, d_mongoresp:dict, message:str = "") \
+    -> responseModel.mongodbResponse:
+        d_resp:responseModel.mongodbResponse \
+                        = responseModel.mongodbResponse()
+        d_resp.status   = d_mongoresp['status']
+        d_resp.response = d_mongoresp
+        d_resp.message  = message
+        return d_resp
+
     async def service(self) -> None:
-        pudb.set_trace()
-        d_data:dict             = {}
+        #pudb.set_trace()
+        #d_data:dict             = {}
 
         await self.dbAPI.connect(self.args.DBname)
-        self.dbAPI.collection_add(self.args.collectionName)
+        await self.dbAPI.collection_add(self.args.collectionName)
 
         if self.args.jsonFile:
             d_json:dict         = self.jsonFile_intoDictRead()
             if d_json['status']:
-                await self.dbAPI.insert_one(
+                d_resp:dict     = await self.dbAPI.insert_one(
                         intoCollection  = self.args.collectionName,
                         document        = d_json['data']
                 )
-
+#                pudb.set_trace()
+                self.responseData       = self.responseData_build(
+                                            d_resp,
+                                            'Document inserted successfully'\
+                                                if d_resp['status'] else    \
+                                            'Document insert failure'
+                                        )
 
 #        d_data:sensorModel.persairResponse  = sensorModel.persairResponse()
 #
@@ -262,6 +297,4 @@ class Pfmongo:
 #                self.args.usingGroupID
 #            )
 #
-        # Close this comms session
-        self.responseData   = responseModel.mongodbResponse()
 
