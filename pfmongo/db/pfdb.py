@@ -1,4 +1,3 @@
-from os import write
 from    typing              import Any, List, TypedDict
 from    pydantic            import BaseModel, Field
 
@@ -19,12 +18,14 @@ from    pymongo             import MongoClient
 from    pymongo.database    import Database
 from    pymongo.collection  import Collection
 
+from    motor               import motor_asyncio as AIO
+
 class mongoDB():
 
     def getDB(self) -> Database[Any]:
         return self.DB
 
-    def connectDB(self, DBname:str) -> dict:
+    async def connectDB(self, DBname:str) -> dict:
         """
         Connect to the DB called <DBname> (or create the DB if it does
         not exist). Return the DB and a bool exist_already/not_exist
@@ -37,13 +38,14 @@ class mongoDB():
             dict[str, bool | Database[Any]]: DB -- the database
                                              bool -- False if DB is not yet created
         """
+        l_DBs:list  = await self.Mongo.list_database_names()
         d_ret:dict  = {
-            'status':   True if DBname in self.Mongo.list_database_names() else False,
-            'DB':       self.Mongo[DBname]
+            'existsAlready':    True if DBname in l_DBs else False,
+            'DB':               self.Mongo[DBname]
         }
         return d_ret
 
-    def insert_one(self, **kwargs) -> dict[bool, dict]:
+    async def insert_one(self, **kwargs) -> dict[bool, dict]:
         d_document:dict     = {}
         d_data:dict         = {
                 'status':   False,
@@ -56,23 +58,25 @@ class mongoDB():
             if k == 'document':         d_document      = v
         if not intoCollection:
             return d_data
-        self.collection_add(intoCollection)
+        await self.collection_add(intoCollection)
         ld_collection:list = [d for d in self.ld_collection
                                 if d['name'] == intoCollection]
         for d in ld_collection:
-            d_data['document']  = d['collection'].document_add(d_document)
+            d_data['document']  = await d['collection'].document_add(d_document)
             d_data['status']    = True
         return d_data
 
-    def collection_add(self, name:str) -> bool:
+    async def collection_add(self, name:str) -> bool:
         b_ret:bool  = False
         l_names     = [ x['name'] for x in self.ld_collection]
         if name not in l_names:
-            b_ret   = True
+            b_ret                   = True
+            colObj:mongoCollection  = mongoCollection(self)
             self.ld_collection.append({
                 "name"      : name,
-                "collection": mongoCollection(self, name)
+                "collection": colObj
             })
+            await colObj.connect(name)
         return b_ret
 
     def __init__(self, **kwargs) -> None:
@@ -83,6 +87,8 @@ class mongoDB():
 
         For "simplicity sake" in this formulation, create a separate object
         for each DB in Mongo.
+
+        Be sure to await the "connect" method on this object after instantiation!
 
         :param DBname: the string name of the data base within Mongo
         :param settingsMongo: a structure containing the Mongo URI and login
@@ -95,13 +101,21 @@ class mongoDB():
             if k == 'name'              : DBname            = v
             if k == 'settings'          : settingsMongo     = v
 
-        self.Mongo:MongoClient  = MongoClient(
+        self.Mongo:AIO.AsyncIOMotorClient = AIO.AsyncIOMotorClient(
                                         settingsMongo.MD_URI,
                                         username    = settingsMongo.MD_username,
                                         password    = settingsMongo.MD_password
                                 )
+        #self.Mongo:MongoClient  = MongoClient(
+        #                                settingsMongo.MD_URI,
+        #                                username    = settingsMongo.MD_username,
+        #                                password    = settingsMongo.MD_password
+        #                        )
         self.ld_collection:list[dict]   = []
-        self.DB:Database[Any]           = self.connectDB(DBname)['DB']
+
+    async def connect(self, DBname:str) -> None:
+        self.d_DBref:dict               = await self.connectDB(DBname)
+        self.DB:Database[Any]           = self.d_DBref['DB']
 
 class mongoCollection():
 
@@ -109,11 +123,11 @@ class mongoCollection():
         l_results:list[dict[str, Any]] = list(self.collection.find(d_query))
         return l_results
 
-    def document_add(self, d_data:dict) -> dict:
+    async def document_add(self, d_data:dict) -> dict:
         self.collection.insert_one(d_data)
         return d_data
 
-    def connectCollection(self, collection:str) -> dict:
+    async def connectCollection(self, collection:str) -> dict:
         """
         Connect to the collection called <collection> (or create the
         collection if it does not exist). Return the collection and a
@@ -131,10 +145,14 @@ class mongoCollection():
             d_ret['elements']   = d_ret['collection'].find().count()
         return d_ret
 
-    def __init__(self, DBobject:mongoDB, name:str) -> None:
+    def __init__(self, DBobject:mongoDB) -> None:
         self.DB:Database[Any]           = DBobject.getDB()
-        self.d_collection:dict          = self.connectCollection(name)
-        self.collection:Collection[Any] = self.connectCollection(name)['collection']
+        #self.d_collection:dict          = await self.connectCollection(name)
+        #self.collection:Collection[Any] = self.d_collection['interface']
+
+    async def connect(self, name:str) -> None:
+        self.d_collection:dict          = await self.connectCollection(name)
+        self.collection:Collection[Any] = self.d_collection['interface']
 
 
 class PFdb_mongo():
