@@ -43,6 +43,8 @@ setup(
       packages         =   ['pfmongo',
                             'pfmongo/commands',
                             'pfmongo/commands/fop',
+                            'pfmongo/commands/dbop',
+                            'pfmongo/commands/clop',
                             'pfmongo/db',
                             'pfmongo/config',
                             'pfmongo/models'],
