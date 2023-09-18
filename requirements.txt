@@ -17,4 +17,6 @@ pfmisc
 # Misc
 pydantic>=2.3.0
 pydantic_settings
+click
+appdirs
 
