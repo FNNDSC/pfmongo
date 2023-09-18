@@ -29,12 +29,13 @@ from    pfmongo.config      import settings
 from    pathlib             import Path
 import  appdirs
 import  click
+from    click.formatting    import wrap_text
 
 try:
-    from    commands      import add, delete, search, show, fs, man
+    from    commands      import    database, collection, fs, man
 
 except:
-    from    .commands     import add, delete, search, show, fs, man
+    from    .commands     import    database, collection, fs, man
 
 options:Namespace               = Namespace()
 
@@ -98,11 +99,7 @@ def main(argv:list[str]=[]) -> int:
 
     return(app())
 
-@click.group(help = f"""
-
-{pfmongo.package_description}
-
-""")
+@click.group(help = wrap_text(pfmongo.package_description))
 @click.option('--man',
               is_flag   = True,
               help      = 'show more detail about core OPTIONS')
@@ -130,10 +127,8 @@ def app(ctx:click.Context,
             return envCheckFailure
     return 0
 
-app.add_command(add.add)
-app.add_command(delete.delete)
-app.add_command(search.search)
+app.add_command(database.database)
+app.add_command(collection.collection)
 app.add_command(fs.fs)
-app.add_command(show.show)
 #app.add_command(man.man)
 
