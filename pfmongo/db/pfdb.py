@@ -76,7 +76,9 @@ class mongoDB():
         ld_collection:list = [d for d in self.ld_collection
                                 if d['name'] == intoCollection]
         for d in ld_collection:
-            d_data          = self.insert_one_response(await d['collection'].document_add(d_document))
+            d_data          = self.insert_one_response(
+                                await d['collection'].document_add(d_document)
+                            )
         return d_data
 
     async def collection_add(self, name:str) -> bool:
