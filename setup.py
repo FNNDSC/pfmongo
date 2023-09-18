@@ -40,7 +40,12 @@ setup(
       author           =   'FNNDSC',
       author_email     =   'dev@babymri.org',
       url              =   'https://github.com/FNNDSC/persair',
-      packages         =   ['pfmongo', 'pfmongo/db', 'pfmongo/config', 'pfmongo/models'],
+      packages         =   ['pfmongo',
+                            'pfmongo/commands',
+                            'pfmongo/commands/fop',
+                            'pfmongo/db',
+                            'pfmongo/config',
+                            'pfmongo/models'],
       install_requires =   requirements,
       entry_points={
           'console_scripts': [
