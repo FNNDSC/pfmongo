@@ -1,8 +1,13 @@
 from    pathlib     import  Path
 from    argparse    import  Namespace
 from    typing      import  Optional
+from    pfmisc      import  Colors  as C
 import  click
 import  pudb
+
+NC  = C.NO_COLOUR
+GR  = C.GREEN
+CY  = C.CYAN
 
 try:
     from    fop     import ls, cat, cd, mkdir, imp, exp
@@ -19,8 +24,8 @@ def root(options:Namespace) -> Path:
         root        = Path(*list(RFS.parts)[:si + 1])
     return root
 
-@click.group(help="""
-                    file system type subcommands
+@click.group(help=f"""
+             {GR}<fileSystem> {CY}cmd {NC}args -- "file system" commands
 
 This command group uses file system (FS) "commands" in the context of a mongodb
 allowing for an FS-modeled interface.
