@@ -37,7 +37,8 @@ except:
     from        .db             import pfdb
     from        .models         import responseModel
 
-
+NC              = C.NO_COLOUR
+Y               = C.YELLOW
 LOG             = logger.debug
 logger_format   = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> │ "
@@ -51,52 +52,60 @@ logger.remove()
 logger.add(sys.stderr, format=logger_format)
 
 package_description:str = f"""
-    {C.YELLOW}pfmongo{C.NO_COLOUR} is a somewhat ideosyncratic class interface to a mongodb. It is
-    both a CLI client and supporting python module, following the "pf" (see
-    elsewhere) design pattern.
+    {C.YELLOW}pfmongo{NC} is a somewhat ideosyncratic class interface to a mongodb. It is
+    both a CLI client and supporting python module, following the
+    "pf" (see elsewhere) design pattern.
 
     The basic idea is to provide a class-based set of operations to simplify
     adding and retrieving (and searching) for documents in a mongodb.
+
+    From the CLI, several subcommands are also available to interact
+    with documents in collections, including
+
+        - {C.CYAN}add{NC},   
+        - {C.CYAN}del{NC},  
+        - {C.CYAN}search{NC},    
+        - {C.CYAN}show{NC}  
+
+    A "filesystem" (fs) nested subcommand mode is also available which provides
+    a filesystem like interface to the mongodb. These are accessed via the
+    {C.GREEN}fs{NC} subcommand and include
+
+        - {C.CYAN}cd{NC},   
+        - {C.CYAN}ls{NC},  
+        - {C.CYAN}less{NC},    
+        - {C.CYAN}cat{NC}  
+
 """
 
+package_coreDescription:str = f'''
+    {Y}pfmongo{NC} supports some core CLI arguments that are used to specify
+    the general operation of the program, specifically the mongo database to
+    use and the collection within that database to access.
+
+    These can also be set with CLI and are specified _before_ the sub command
+    to use.
+
+    Additionally, a simple --version can also be specified here.
+'''
+
 package_CLIself = '''
-        [--mongodbinit <init.json>]                                             \\
-        [--useHashes]                                                           \\
-        [--noDuplicates]                                                        \\
-        [--useDB <DBname>]                                                      \\
-        [--useCollection <collectionName>]                                      \\
-        [--addDocument <document.json>]                                         \\
-        [--searchOn <searchString>]                                             \\
+        --useDB <DBname>                                                        \\
+        --useCollection <collectionName>                                        \\
         [--man]                                                                 \\
         [--version]'''
 
 package_argSynopsisSelf = f"""
-        {C.YELLOW}[--mongodbinit <init.json>]{C.NO_COLOUR}
-        The mongodb initialization file.
-
-        {C.YELLOW}[--useHashes]{C.NO_COLOUR}
-        If specified, add a hash of the document to the record when adding.
-
-        {C.YELLOW}[--noDuplicates]{C.NO_COLOUR}
-        If specified, do not add a document to a collection if an existing
-        document has the same hash.
-
-        {C.YELLOW}[--useDB <DBname>]{C.NO_COLOUR}
+        {Y}[--useDB <DBname>]{NC}
         Use the data base called <DBname>.
 
-        {C.YELLOW}[--useCollection <collectionName>]{C.NO_COLOUR}
+        {Y}[--useCollection <collectionName>]{NC}
         Use the collection called <collectionName>.
 
-        {C.YELLOW}[--addDocument <document.json>]{C.NO_COLOUR}
-        Add the <document.json> to the <DBname>/<collectionName>.
-
-        {C.YELLOW}[--searchOn <searchExp>]{C.NO_COLOUR}
-        Search for <searchExp> (see below) in the <DBname>/<collectionName>.
-
-        {C.YELLOW}[--man]{C.NO_COLOUR}
+        {Y}[--man]{NC}
         If specified, print this help/man page.
 
-        {C.YELLOW}[--version]{C.NO_COLOUR}
+        {Y}[--version]{NC}
         If specified, print app name/version.
 """
 
@@ -131,7 +140,7 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
 
     parserSelf.add_argument("--version",
                     help    = "print name and version",
-                    dest    = 'b_version',
+                    dest    = 'version',
                     default = False,
                     action  = 'store_true')
 
@@ -144,37 +153,37 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
     parserSelf.add_argument("--useDB",
                     help    = "use the named data base",
                     dest    = 'DBname',
-                    default = 'pf_defaultDB')
+                    default = '')
 
     parserSelf.add_argument("--useCollection",
                     help    = "use the named collection",
                     dest    = 'collectionName',
-                    default = 'pf_defaultCollection')
-
-    parserSelf.add_argument("--addDocument",
-                    help    = "add the contents of the json formatted file",
-                    dest    = 'jsonFile',
                     default = '')
 
-    parserSelf.add_argument("--searchOn",
-                    help    = "search on the passed search token",
-                    dest    = 'searchExp',
-                    default = '')
-
+#    parserSelf.add_argument("--addDocument",
+#                    help    = "add the contents of the json formatted file",
+#                    dest    = 'addDocument',
+#                    default = '')
+#
+#    parserSelf.add_argument("--searchOn",
+#                    help    = "search on the passed search token",
+#                    dest    = 'searchExp',
+#                    default = '')
+#
     return parserSelf
 
-def parser_interpret(parser, *args):
+def parser_interpret(parser, args) -> tuple:
     """
     Interpret the list space of *args, or sys.argv[1:] if
     *args is empty
     """
-    if len(args):
-        args    = parser.parse_args(*args)
+    if args:
+        args, unknown    = parser.parse_known_args(args)
     else:
-        args    = parser.parse_args(sys.argv[1:])
-    return args
+        args, unknown    = parser.parse_known_args(sys.argv[1:])
+    return args, unknown
 
-def parser_JSONinterpret(parser, d_JSONargs):
+def parser_JSONinterpret(parser, d_JSONargs) -> tuple:
     """
     Interpret a JSON dictionary in lieu of CLI.
 
@@ -208,12 +217,12 @@ class Pfmongo:
     """
 
     def  __init__(self, args, **kwargs) -> None:
-
+        self.args:Namespace             = Namespace()
         if type(args) is dict:
-            parser:ArgumentParser      = parser_setup('Setup client using dict')
-            self.args:Namespace        = parser_JSONinterpret(parser, args)
+            parser:ArgumentParser       = parser_setup('Setup client using dict')
+            self.args, extra            = parser_JSONinterpret(parser, args)
         if type(args) is Namespace:
-            self.args:Namespace        = args
+            self.args                   = args
 
         # attach a comms API to the mongo db
         self.dbAPI:pfdb.mongoDB         = pfdb.mongoDB(
@@ -233,7 +242,7 @@ class Pfmongo:
             'data':     {}
         }
         try:
-            f = open(self.args.jsonFile)
+            f = open(self.args.addDocument)
             d_json['data']      = json.load(f)
             d_json['status']    = True
         except Exception as e:
