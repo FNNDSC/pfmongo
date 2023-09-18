@@ -38,7 +38,9 @@ except:
     from        .models         import responseModel
 
 NC              = C.NO_COLOUR
-Y               = C.YELLOW
+YL              = C.YELLOW
+GR              = C.GREEN
+CY              = C.CYAN
 LOG             = logger.debug
 logger_format   = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> │ "
@@ -52,34 +54,29 @@ logger.remove()
 logger.add(sys.stderr, format=logger_format)
 
 package_description:str = f"""
-    {C.YELLOW}pfmongo{NC} is a somewhat ideosyncratic class interface to a mongodb. It is
-    both a CLI client and supporting python module, following the
-    "pf" (see elsewhere) design pattern.
+                        {YL}pfmongo{NC} -- mongo for rest of us.
+
+    This project is a somewhat ideosyncratic class interface to a mongodb.
+    It is both a CLI client and supporting python module, following the "pf"
+    (see elsewhere) design pattern.
 
     The basic idea is to provide a class-based set of operations to simplify
-    adding and retrieving (and searching) for documents in a mongodb.
+    working with data (documents) in a mongodb. For added happiness, a "file
+    system-y" like set of commands that act as one would expect is also
+    provided.
 
-    From the CLI, several subcommands are also available to interact
-    with documents in collections, including
+    From the CLI, subcommands are organized into three main groupings:
 
-        - {C.CYAN}add{NC},   
-        - {C.CYAN}del{NC},  
-        - {C.CYAN}search{NC},    
-        - {C.CYAN}show{NC}  
+        {GR}fs{NC} for 'filesystem' type commands,
+        {GR}database{NC} for 'database' type commands,
+        {GR}collection{NC}, for 'collection' type commands
 
-    A "filesystem" (fs) nested subcommand mode is also available which provides
-    a filesystem like interface to the mongodb. These are accessed via the
-    {C.GREEN}fs{NC} subcommand and include
-
-        - {C.CYAN}cd{NC},   
-        - {C.CYAN}ls{NC},  
-        - {C.CYAN}less{NC},    
-        - {C.CYAN}cat{NC}  
+    Use {YL}pfmongo {GR}<grouping> {CY}--help{NC}!
 
 """
 
 package_coreDescription:str = f'''
-    {Y}pfmongo{NC} supports some core CLI arguments that are used to specify
+    {YL}pfmongo{NC} supports some core CLI arguments that are used to specify
     the general operation of the program, specifically the mongo database to
     use and the collection within that database to access.
 
@@ -96,16 +93,16 @@ package_CLIself = '''
         [--version]'''
 
 package_argSynopsisSelf = f"""
-        {Y}[--useDB <DBname>]{NC}
+        {YL}[--useDB <DBname>]{NC}
         Use the data base called <DBname>.
 
-        {Y}[--useCollection <collectionName>]{NC}
+        {YL}[--useCollection <collectionName>]{NC}
         Use the collection called <collectionName>.
 
-        {Y}[--man]{NC}
+        {YL}[--man]{NC}
         If specified, print this help/man page.
 
-        {Y}[--version]{NC}
+        {YL}[--version]{NC}
         If specified, print app name/version.
 """
 
