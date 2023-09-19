@@ -18,7 +18,7 @@ except:
 @click.group(help=f"""
              {GR}database {CY}<cmd>{NC} -- database commands
 
-This command group provides mongo "database" level commands
+This command group provides mongo "database" level commands.
 
 """)
 def database():
