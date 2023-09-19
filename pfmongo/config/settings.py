@@ -6,5 +6,6 @@ class Mongo(BaseSettings):
     MD_DB:str           = ""
     MD_username:str     = "username"
     MD_password:str     = "password"
+    MD_sessionUser:str  = ""
 
 mongosettings   = Mongo()
