@@ -30,7 +30,7 @@ class mongoDB():
     def getDB(self) -> AIO.AsyncIOMotorDatabase:
         return self.DB
 
-    async def showDB(self) -> list:
+    async def showall(self) -> list:
         l_DBs:list  = await self.Mongo.list_database_names()
         return l_DBs
 
