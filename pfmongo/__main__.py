@@ -32,10 +32,12 @@ import  click
 from    click.formatting    import wrap_text
 
 try:
-    from    commands      import    database, collection, fs, man
+    from    commands        import  database, collection, fs, man
+    from    commands        import  man as manual
 
 except:
-    from    .commands     import    database, collection, fs, man
+    from    .commands       import  database, collection, fs, man
+    from    .commands       import  man as manual
 
 options:Namespace               = Namespace()
 
@@ -60,6 +62,8 @@ def main(argv:list[str]=[]) -> int:
     The main entry point to the program. Can also be called from Python by
     passing along a "pseudo" argv list of strings (note the first element of
     the list MUST be the executable name).
+
+    The "core" CLI args are processed here.
 
     This function demonstrates a design pattern that mixes argparse and click
     parsing, hopefully leveraging something of the best of both worlds.
@@ -103,12 +107,19 @@ def main(argv:list[str]=[]) -> int:
 @click.option('--man',
               is_flag   = True,
               help      = 'show more detail about core OPTIONS')
+@click.option('--version',
+              is_flag   = True,
+              help      = 'show program version')
 @click.pass_context
 def app(ctx:click.Context,
-        man:bool) -> int:
+        man:bool, version:bool) -> int:
     """
     The main "app" -- it mostly serves as a point to route to the
     various subcommands and provide some in-line help.
+
+    Note the --man and --version are added as options here only to
+    be picked up by the "--help", but they are in fact handled by
+    the parent main() method.
 
     :param ctx: a click "context" -- it is expanded here to transmit additional
                 information to subcommands.
