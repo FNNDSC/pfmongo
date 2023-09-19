@@ -37,6 +37,8 @@ except:
     from        .db             import pfdb
     from        .models         import responseModel
 
+from click.formatting           import wrap_text
+
 NC              = C.NO_COLOUR
 YL              = C.YELLOW
 GR              = C.GREEN
@@ -56,22 +58,27 @@ logger.add(sys.stderr, format=logger_format)
 package_description:str = f"""
                         {YL}pfmongo{NC} -- mongo for rest of us.
 
-    This project is a somewhat ideosyncratic class interface to a mongodb.
+    This `project` is a somewhat ideosyncratic class interface to a mongodb.
     It is both a CLI client and supporting python module, following the "pf"
     (see elsewhere) design pattern.
 
     The basic idea is to provide a class-based set of operations to simplify
     working with data (documents) in a mongodb. For added happiness, a "file
-    system-y" like set of commands that act as one would expect is also
-    provided.
+    system-y" metaphor complete with supporting commands that present the
+    database as a file system is also provided.
 
     From the CLI, subcommands are organized into three main groupings:
 
-        {GR}fs{NC} for 'filesystem' type commands,
+        {GR}fs{NC} for 'filesystem' type commands,                         
         {GR}database{NC} for 'database' type commands,
         {GR}collection{NC} for 'collection' type commands
 
-    Use {YL}pfmongo {GR}<grouping> {CY}--help{NC}!
+    Use {YL}pfmongo {GR}<grouping> {CY}--help{NC} for <grouping> specific
+    help. For example
+
+        {YL}pfmongo {GR}fs {CY}--help{NC}
+
+    for help on the file system commands.
 
 """
 
@@ -209,7 +216,7 @@ def date_toUNIX(str_date:str) -> int:
 class Pfmongo:
     """
 
-    A class that provides a python API for interacting with a monogodb.
+    A class that provides a python API for interacting with a mongodb.
 
     """
 
@@ -255,52 +262,58 @@ class Pfmongo:
         d_resp.message  = message
         return d_resp
 
+    async def showAll(self):
+        l_DBs:list          = await self.dbAPI.showall()
+        d_resp:dict         = {
+            'status'    : True,
+            'databases' : l_DBs
+        }
+        self.responseData   = self.responseData_build(
+                                d_resp,
+                                'Available databases'
+                            )
+
+    async def documentAdd(self):
+        d_json:dict         = self.jsonFile_intoDictRead()
+        if d_json['status']:
+            d_resp:dict     = await self.dbAPI.insert_one(
+                                intoCollection  = self.args.collectionName,
+                                document        = d_json['data']
+                        )
+            pudb.set_trace()
+            self.responseData       = self.responseData_build(
+                                                    d_resp,
+                                                    'Document inserted successfully'\
+                                                        if d_resp['status'] else    \
+                                                    'Document insert failure'
+                                                    )
+
+    async def connect(self):
+        d_DB:dict           = await self.dbAPI.connectDB(self.args.argument)
+
     async def service(self) -> None:
-        #pudb.set_trace()
+        pudb.set_trace()
         #d_data:dict             = {}
 
-        await self.dbAPI.connect(self.args.DBname)
-        await self.dbAPI.collection_add(self.args.collectionName)
-
-        if self.args.jsonFile:
-            d_json:dict         = self.jsonFile_intoDictRead()
-            if d_json['status']:
-                d_resp:dict     = await self.dbAPI.insert_one(
-                        intoCollection  = self.args.collectionName,
-                        document        = d_json['data']
-                )
-#                pudb.set_trace()
-                self.responseData       = self.responseData_build(
-                                            d_resp,
-                                            'Document inserted successfully'\
-                                                if d_resp['status'] else    \
-                                            'Document insert failure'
-                                        )
-
-#        d_data:sensorModel.persairResponse  = sensorModel.persairResponse()
-#
-#        if self.args.sensorDataGet:
-#            str_history:str     = ""
-#            if self.args.asHistory:
-#                str_history     = f"/history"
-#            if self.args.asHistoryCSV:
-#                str_history     = f"/history/csv"
-#            d_data  = await self.sensor_dataGet(
-#                self.args.sensorDataGet,
-#                self.args.fields,
-#                str_history
-#            )
-#        if self.args.sensorAddToGroup:
-#            d_data  = await self.sensor_toGroupAdd(
-#                self.args.sensorAddToGroup, self.args.usingGroupID
-#            )
-#        if self.args.sensorsAddFromFile:
-#            d_data  = await self.sensors_toGroupFromFile(
-#                self.args.usingGroupID, Path(self.args.sensorsAddFromFile)
-#            )
-#        if self.args.sensorsInGroupList:
-#            d_data  = await self.sensors_inGroupGet(
-#                self.args.usingGroupID
-#            )
-#
-
+        if not hasattr(self.args, 'do'):
+            return
+        match(self.args.do):
+            case 'showAll':
+                await self.showAll()
+        #await self.dbAPI.connect(self.args.DBname)
+        #await self.dbAPI.collection_add(self.args.collectionName)
+            case 'addDocument':
+                await self.documentAdd()
+#                d_json:dict         = self.jsonFile_intoDictRead()
+#                if d_json['status']:
+#                        d_resp:dict     = await self.dbAPI.insert_one(
+#                                intoCollection  = self.args.collectionName,
+#                                document        = d_json['data']
+#                        )
+#        #                pudb.set_trace()
+#                        self.responseData       = self.responseData_build(
+#                                                    d_resp,
+#                                                    'Document inserted successfully'\
+#                                                        if d_resp['status'] else    \
+#                                                    'Document insert failure'
+#                                                    )
