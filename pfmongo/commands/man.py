@@ -62,9 +62,9 @@ def coreOptions_show(options:Namespace) -> bool:
 
 def versionAndName_print() -> int:
     print("Name:    ", end="")
-    print(C.LIGHT_CYAN + f'{__pkg.name}' + NC)
+    print(C.LIGHT_GREEN + f'{__pkg.name}' + NC)
     print("Version: ", end="")
-    print(C.LIGHT_GREEN + f'{__version__}\n')
+    print(C.LIGHT_CYAN + f'{__version__}\n')
     return 1
 
 def coreManpage_print() -> int:
