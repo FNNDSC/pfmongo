@@ -26,6 +26,7 @@ import  pudb
 from    pfmisc              import Colors as C
 from    typing              import Any, Literal
 from    pfmongo.config      import settings
+from    pfmongo.models      import dataModel
 from    pathlib             import Path
 import  appdirs
 import  click
@@ -38,6 +39,10 @@ try:
 except:
     from    .commands       import  database, collection, fs, man
     from    .commands       import  man as manual
+
+NC  = C.NO_COLOUR
+GR  = C.GREEN
+CY  = C.CYAN
 
 options:Namespace               = Namespace()
 
@@ -95,6 +100,19 @@ def main(argv:list[str]=[]) -> int:
     options.thisSession         = options.configPath        / \
                                     Path("_MONGO_" + URI)   / \
                                     Path(settings.mongosettings.MD_DB)
+    if not settings.mongosettings.MD_sessionUser:
+        return driver.complain(f'''
+                An 'MD_sessionUser' has not been specified in the environment.
+                This variable denotes the "name" of a current user of the service
+                and is used to store user specific state data.
+
+                Please set with:
+
+                        export {GR}MD_SESSIONUSER{NC}={CY}yourName{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    options.sessionUser         = settings.mongosettings.MD_sessionUser
     if man.coreOptions_show(options):
         return man.man(options)
 
@@ -103,7 +121,7 @@ def main(argv:list[str]=[]) -> int:
 
     return(app())
 
-@click.group(help = wrap_text(pfmongo.package_description))
+@click.group(help = pfmongo.package_description)
 @click.option('--man',
               is_flag   = True,
               help      = 'show more detail about core OPTIONS')
@@ -132,10 +150,11 @@ def app(ctx:click.Context,
     ctx.obj['options']          = options
 
     subcommand:str|None         = click.get_current_context().invoked_subcommand
-    if subcommand != 'fs':
-        envCheckFailure:int     = driver.env_failCheck(options)
-        if envCheckFailure:
-            return envCheckFailure
+    #pudb.set_trace()
+    #if subcommand != 'fs':
+    #    envCheckFailure:int     = driver.env_failCheck(options)
+    #    if envCheckFailure:
+    #        return envCheckFailure
     return 0
 
 app.add_command(database.database)
