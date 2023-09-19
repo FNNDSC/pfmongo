@@ -69,7 +69,7 @@ package_description:str = f"""
 
         {GR}fs{NC} for 'filesystem' type commands,
         {GR}database{NC} for 'database' type commands,
-        {GR}collection{NC}, for 'collection' type commands
+        {GR}collection{NC} for 'collection' type commands
 
     Use {YL}pfmongo {GR}<grouping> {CY}--help{NC}!
 
