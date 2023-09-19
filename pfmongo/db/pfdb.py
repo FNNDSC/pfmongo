@@ -30,6 +30,10 @@ class mongoDB():
     def getDB(self) -> AIO.AsyncIOMotorDatabase:
         return self.DB
 
+    async def showDB(self) -> list:
+        l_DBs:list  = await self.Mongo.list_database_names()
+        return l_DBs
+
     async def connectDB(self, DBname:str) -> dict:
         """
         Connect to the DB called <DBname> (or create the DB if it does
