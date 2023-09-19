@@ -1,30 +1,26 @@
+from    argparse    import Namespace
 import  click
-from    pathlib import  Path
-from    pfmisc  import  Colors as C
+from    pathlib     import Path
+from    pfmisc      import Colors as C
+from    pfmongo     import driver
 
 NC = C.NO_COLOUR
 GR = C.LIGHT_GREEN
 CY = C.CYAN
 
 @click.command(help=f"""
-               {GR}ls {CY}<args>{NC} -- list files
+               {GR}connect {CY}<database>{NC} -- connect to a mongo <database>
 
-This command lists the objects (files and directories) that are at a given
-path. This path can be a directory, in which case possibly multiple objects
-are listed, or it can be a single file in which case information about that
-single file is listed.
+This command connects to a mongo database. A mongodb "server" can contain
+several "databases".
 
 """)
-@click.argument('path',
-                required = False)
-@click.option('--attribs',  required = False,
-              help      = 'A comma separated list of file attributes to return/print')
-@click.option('--long',
-              is_flag   = True,
-              help      = 'If set, use a long listing format')
-def connect(path:str, attribs:str, long:bool) -> None:
+@click.argument('database',
+                required = True)
+@click.pass_context
+def connect(ctx:click.Context, database:str) -> None:
     # pudb.set_trace()
-    target:Path     = Path('')
-    if path:
-        target = Path(path)
-
+    options:Namespace   = ctx.obj['options']
+    options.do          = 'connect'
+    options.argument    = database
+    connect:int         = driver.run(options)
