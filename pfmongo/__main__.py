@@ -68,7 +68,9 @@ def main(argv:list[str]=[]) -> int:
     passing along a "pseudo" argv list of strings (note the first element of
     the list MUST be the executable name).
 
-    The "core" CLI args are processed here.
+    The "core" CLI args are processed here as well as some environmental checks
+    are performed. If necessary, the application will "terminate" from this
+    method before routing to the subcommands/groups.
 
     This function demonstrates a design pattern that mixes argparse and click
     parsing, hopefully leveraging something of the best of both worlds.
@@ -76,7 +78,7 @@ def main(argv:list[str]=[]) -> int:
     :param argv: a CLI argv list of strings.
     """
     global options
-    # pudb.set_trace()
+    pudb.set_trace()
     add_help:bool               = False
     parser:ArgumentParser       = parser_setup(
                                     'A client for interacting with mongo DBs',
@@ -86,39 +88,15 @@ def main(argv:list[str]=[]) -> int:
     # Should we show (and exit) some man page help?
     options, extra              = parser_interpret(parser, argv)
 
-    # Is this correct?
-    if options.DBname:
-        settings.mongosettings.MD_DB    = options.DBname
-    if settings.mongosettings.MD_DB and not options.DBname:
-        options.DBname          = settings.mongosettings.MD_DB
-    URI:str                     = settings.mongosettings.MD_URI.\
-                                        replace(':', '-').\
-                                        replace('/', '')
-    options.configPath          = Path(
-            appdirs.user_config_dir(appname = __pkg.name)
-    )
-    options.thisSession         = options.configPath        / \
-                                    Path("_MONGO_" + URI)   / \
-                                    Path(settings.mongosettings.MD_DB)
-    if not settings.mongosettings.MD_sessionUser:
-        return driver.complain(f'''
-                An 'MD_sessionUser' has not been specified in the environment.
-                This variable denotes the "name" of a current user of the service
-                and is used to store user specific state data.
+    if not driver.env_statePathSet(options):
+        return 10
 
-                Please set with:
-
-                        export {GR}MD_SESSIONUSER{NC}={CY}yourName{NC}
-                ''',
-                5,
-                dataModel.messageType.ERROR)
-    options.sessionUser         = settings.mongosettings.MD_sessionUser
+    # This is the result of argparse
     if man.coreOptions_show(options):
         return man.man(options)
 
     # the click "app" interprets sys.argv, hence the revamping here
     newargv:list[str]           = sysargv_revamp(extra)
-
     return(app())
 
 @click.group(help = pfmongo.package_description)
