@@ -28,14 +28,19 @@ import      pudb
 from        typing              import Any, Callable
 from        pydantic            import HttpUrl
 
-try:
-    from        config          import settings
-    from        db              import pfdb
-    from        models          import responseModel
-except:
-    from        .config         import settings
-    from        .db             import pfdb
-    from        .models         import responseModel
+from        pfmongo.config      import settings
+from        pfmongo.db          import pfdb
+from        pfmongo.models      import responseModel
+from        pfmongo             import driver
+
+#try:
+#    from        config          import settings
+#    from        db              import pfdb
+#    from        models          import responseModel
+#except:
+#    from        .config         import settings
+#    from        .db             import pfdb
+#    from        .models         import responseModel
 
 from click.formatting           import wrap_text
 
@@ -69,7 +74,7 @@ package_description:str = f"""
 
     From the CLI, subcommands are organized into three main groupings:
 
-        {GR}fs{NC} for 'filesystem' type commands,                         
+        {GR}fs{NC} for 'filesystem' type commands,
         {GR}database{NC} for 'database' type commands,
         {GR}collection{NC} for 'collection' type commands
 
@@ -282,38 +287,35 @@ class Pfmongo:
                         )
             pudb.set_trace()
             self.responseData       = self.responseData_build(
-                                                    d_resp,
-                                                    'Document inserted successfully'\
-                                                        if d_resp['status'] else    \
-                                                    'Document insert failure'
-                                                    )
+                                        d_resp,
+                                        'Document inserted successfully'\
+                                            if d_resp['status'] else    \
+                                        'Document insert failure'
+                                    )
 
     async def connect(self):
-        d_DB:dict           = await self.dbAPI.connectDB(self.args.argument)
+        pudb.set_trace()
+        #d_DB:dict           = await self.dbAPI.connectDB(self.args.argument)
+        self.responseData   = self.responseData_build(
+            {
+                'status':   True,
+                'connect':  await self.dbAPI.connectDB(self.args.argument)
+            },
+            f'Connected to {self.args.argument}'
+        )
+        if self.responseData.response['status']:
+            driver.DBname_stateFileSave(self.args, self.args.argument)
 
     async def service(self) -> None:
         pudb.set_trace()
-        #d_data:dict             = {}
 
         if not hasattr(self.args, 'do'):
             return
+
         match(self.args.do):
             case 'showAll':
                 await self.showAll()
-        #await self.dbAPI.connect(self.args.DBname)
-        #await self.dbAPI.collection_add(self.args.collectionName)
+            case 'connect':
+                await self.connect()
             case 'addDocument':
                 await self.documentAdd()
-#                d_json:dict         = self.jsonFile_intoDictRead()
-#                if d_json['status']:
-#                        d_resp:dict     = await self.dbAPI.insert_one(
-#                                intoCollection  = self.args.collectionName,
-#                                document        = d_json['data']
-#                        )
-#        #                pudb.set_trace()
-#                        self.responseData       = self.responseData_build(
-#                                                    d_resp,
-#                                                    'Document inserted successfully'\
-#                                                        if d_resp['status'] else    \
-#                                                    'Document insert failure'
-#                                                    )
