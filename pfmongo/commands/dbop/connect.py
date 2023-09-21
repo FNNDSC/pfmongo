@@ -21,6 +21,6 @@ several "databases".
 def connect(ctx:click.Context, database:str) -> None:
     # pudb.set_trace()
     options:Namespace   = ctx.obj['options']
-    options.do          = 'connect'
+    options.do          = 'connectDB'
     options.argument    = database
     connect:int         = driver.run(options)
