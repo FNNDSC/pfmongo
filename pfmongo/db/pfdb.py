@@ -85,17 +85,28 @@ class mongoDB():
                             )
         return d_data
 
+    async def connectCol(self, name:str) -> dict:
+        colObj:mongoCollection      = mongoCollection(self)
+        await colObj.connect(name)
+        return {
+                "name"      : name,
+                "collection": colObj
+        }
+
     async def collection_add(self, name:str) -> bool:
         b_ret:bool  = False
         l_names     = [ x['name'] for x in self.ld_collection]
         if name not in l_names:
             b_ret                   = True
-            colObj:mongoCollection  = mongoCollection(self)
-            self.ld_collection.append({
-                "name"      : name,
-                "collection": colObj
-            })
-            await colObj.connect(name)
+            self.ld_collection.append(
+                await self.connectCol(name)
+            )
+            #colObj:mongoCollection  = mongoCollection(self)
+            #self.ld_collection.append({
+            #    "name"      : name,
+            #    "collection": colObj
+            #})
+            #await colObj.connect(name)
         return b_ret
 
     def __init__(self, **kwargs) -> None:
@@ -104,8 +115,9 @@ class mongoDB():
         is connected to a single mongo database, which can contain a variable
         number of collections (described in a list).
 
-        For "simplicity sake" in this formulation, create a separate object
-        for each DB in Mongo.
+        For "simplicity sake" in this formulation, a new object connection
+        is created for each "call"/"use" of this module (i.e. connections
+        are single-use).
 
         Be sure to await the "connect" method on this object after instantiation!
 
