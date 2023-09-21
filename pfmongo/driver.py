@@ -10,6 +10,7 @@ import  os, sys
 from    pathlib                     import Path
 import  appdirs
 from    pfmongo.models              import dataModel
+from    typing                      import Callable
 try:
     from    .               import __pkg, __version__
 except:
@@ -91,14 +92,42 @@ def collection_stateFileResolve(options:Namespace) -> Path:
 
 def DBname_stateFileRead(options:Namespace) -> str:
     contents:str        = ""
-    DBstatefile:Path    = DB_stateFileResolve(options)
-    if DBstatefile.exists():
-        contents        = DBstatefile.read_text()
+    statefile:Path      = DB_stateFileResolve(options)
+    if statefile.exists():
+        contents        = statefile.read_text()
     return contents
 
 def DBname_stateFileSave(options:Namespace, contents:str) -> str:
-    DBstatefile:Path    = DB_stateFileResolve(options)
-    DBstatefile.write_text(contents)
+    statefile:Path      = DB_stateFileResolve(options)
+    statefile.write_text(contents)
+    return contents
+
+def collectionName_stateFileRead(options:Namespace) -> str:
+    contents:str        = ""
+    statefile:Path      = collection_stateFileResolve(options)
+    if statefile.exists():
+        contents        = statefile.read_text()
+    return contents
+
+def collectionName_stateFileSave(options:Namespace, contents:str) -> str:
+    statefile:Path      = collection_stateFileResolve(options)
+    statefile.write_text(contents)
+    return contents
+
+def stateFileSave(
+        options:Namespace,
+        contents:str,
+        f_stateFileResolve: Callable[[Namespace], Path]
+) -> str:
+    statefile:Path      = f_stateFileResolve(options)
+    statefile.write_text(contents)
+    return contents
+
+def stateFileRead(options:Namespace, f_stateFileResolve: Callable[[Namespace], Path]) -> str:
+    contents:str        = ""
+    statefile:Path      = f_stateFileResolve(options)
+    if statefile.exists():
+        contents        = statefile.read_text()
     return contents
 
 def DBname_get(options:Namespace) -> str:
@@ -108,11 +137,12 @@ def DBname_get(options:Namespace) -> str:
     Order of precedence:
         * if '--DBname' in args, use this as the DBname and set the same
           value in the settings object;
-        * if no '--DBname' check for a state file in the options.statePath
+        * if no '--DBname', check for a state file in the options.statePath
           and if this exists, read that file and set the DBname and settings
           object;
         * if neither, then check the settings object and set the DBname to
           that;
+        * otherwise, failing everthing, return an empty string.
 
     :param options: the set of CLI (and more) options
     :return: a string database name
