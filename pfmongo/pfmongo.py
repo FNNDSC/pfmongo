@@ -242,8 +242,8 @@ class Pfmongo:
         self.responseData:responseModel.mongodbResponse = \
                 responseModel.mongodbResponse()
 
-    async def connectDB(self) -> None:
-        await self.dbAPI.connectDB(self.args.DBname)
+    #async def connectDB(self) -> None:
+    #    await self.dbAPI.connectDB(self.args.DBname)
 
     def jsonFile_intoDictRead(self) -> dict[bool,dict]:
         d_json:dict     = {
@@ -293,18 +293,32 @@ class Pfmongo:
                                         'Document insert failure'
                                     )
 
-    async def connect(self):
+    async def connectDB(self, DBname:str) -> None:
         pudb.set_trace()
         #d_DB:dict           = await self.dbAPI.connectDB(self.args.argument)
         self.responseData   = self.responseData_build(
             {
                 'status':   True,
-                'connect':  await self.dbAPI.connectDB(self.args.argument)
+                'connect':  await self.dbAPI.connectDB(DBname)
             },
             f'Connected to {self.args.argument}'
         )
         if self.responseData.response['status']:
-            driver.DBname_stateFileSave(self.args, self.args.argument)
+            driver.DBname_stateFileSave(self.args, DBname)
+
+    async def connectCollection(self, collectionName:str) -> None:
+        pudb.set_trace()
+        #d_DB:dict           = await self.dbAPI.connectDB(self.args.argument)
+        await self.connectDB(driver.DBname_get(self.args))
+        self.responseData   = self.responseData_build(
+            {
+                'status':   True,
+                'connect':  await self.dbAPI.collection_add(collectionName)
+            },
+            f'Connected to {self.args.argument}'
+        )
+        if self.responseData.response['status']:
+            driver.DBname_stateFileSave(self.args, DBname)
 
     async def service(self) -> None:
         pudb.set_trace()
@@ -315,7 +329,9 @@ class Pfmongo:
         match(self.args.do):
             case 'showAll':
                 await self.showAll()
-            case 'connect':
-                await self.connect()
+            case 'connectDB':
+                await self.connectDB(self.args.argument)
+            case 'connectCollection':
+                await self.connectCollection(self.args.argument)
             case 'addDocument':
                 await self.documentAdd()
