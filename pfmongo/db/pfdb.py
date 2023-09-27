@@ -6,10 +6,6 @@ import  json
 from    datetime            import datetime
 from    pathlib             import Path
 
-try:
-    from    config              import settings
-except:
-    from    ..config             import settings
 import  sys
 import  shutil
 import  pudb
@@ -19,6 +15,9 @@ from    pymongo             import MongoClient
 from    pymongo.database    import Database
 from    pymongo.collection  import Collection
 from    pymongo             import results
+
+from    pfmongo.config      import settings
+from    pfmongo.models      import responseModel
 
 from    motor               import motor_asyncio as AIO
 
@@ -30,9 +29,20 @@ class mongoDB():
     def getDB(self) -> AIO.AsyncIOMotorDatabase:
         return self.DB
 
-    async def showall(self) -> list:
-        l_DBs:list  = await self.Mongo.list_database_names()
-        return l_DBs
+    async def database_names_get(self) -> responseModel.databaseNamesUsage:
+        resp:responseModel.databaseNamesUsage = responseModel.databaseNamesUsage()
+        l_DBs:list      = []
+        error:str       = ""
+        connected:bool  = True
+        try:
+            l_DBs       = await self.Mongo.list_database_names()
+        except Exception as e:
+            connected   = False
+            error       = f'{e}'
+        resp.info.connected = connected
+        resp.info.error     = error
+        resp.databaseNames  = l_DBs
+        return resp
 
     async def connectDB(self, DBname:str) -> dict:
         """
@@ -47,10 +57,12 @@ class mongoDB():
             dict[str, bool | Database[Any]]: DB -- the database
                                              bool -- False if DB is not yet created
         """
-        l_DBs:list  = await self.Mongo.list_database_names()
+        dbnames:responseModel.databaseNamesUsage = await self.database_names_get()
         d_ret:dict  = {
-            'existsAlready':    True if DBname in l_DBs else False,
-            'DB':               self.Mongo[DBname]
+            'connected':        dbnames.info.connected,
+            'existsAlready':    True if DBname in dbnames.databaseNames else False,
+            'DB':               self.Mongo[DBname],
+            'error':            dbnames.info.error
         }
         return d_ret
 
@@ -76,7 +88,7 @@ class mongoDB():
             if k == 'document':         d_document      = v
         if not intoCollection:
             return d_data
-        await self.collection_add(intoCollection)
+        await self.collection_connect(intoCollection)
         ld_collection:list = [d for d in self.ld_collection
                                 if d['name'] == intoCollection]
         for d in ld_collection:
@@ -85,29 +97,31 @@ class mongoDB():
                             )
         return d_data
 
+    def collection_serialize(self) -> responseModel.collectionDesc:
+        resp:responseModel.collectionDesc   = responseModel.collectionDesc()
+        return resp
+
     async def connectCol(self, name:str) -> dict:
         colObj:mongoCollection      = mongoCollection(self)
-        await colObj.connect(name)
         return {
                 "name"      : name,
-                "collection": colObj
+                "collection": await colObj.connect(name)
         }
 
-    async def collection_add(self, name:str) -> bool:
-        b_ret:bool  = False
+    async def collection_connect(self, name:str) -> responseModel.collectionDesc:
+        resp:responseModel.collectionDesc   = responseModel.collectionDesc()
         l_names     = [ x['name'] for x in self.ld_collection]
         if name not in l_names:
-            b_ret                   = True
-            self.ld_collection.append(
-                await self.connectCol(name)
-            )
-            #colObj:mongoCollection  = mongoCollection(self)
-            #self.ld_collection.append({
-            #    "name"      : name,
-            #    "collection": colObj
-            #})
-            #await colObj.connect(name)
-        return b_ret
+            self.ld_collection.append(await self.connectCol(name))
+            resp    = self.ld_collection[-1]['collection']
+        else:
+            lookup:responseModel.collectionDesc|None = next(
+                            (i['collection']
+                            for i in self.ld_collection if i['name'] == name),
+                            None
+                      )
+            if lookup: resp = lookup
+        return resp
 
     def __init__(self, **kwargs) -> None:
         """
@@ -140,9 +154,21 @@ class mongoDB():
         self.ld_collection:list[dict]   = []
         self.args                       = args
 
-    async def connect(self, DBname:str) -> None:
+    def database_serialize(self) -> responseModel.databaseDesc:
+        resp:responseModel.databaseDesc = responseModel.databaseDesc()
+        resp.host                       = self.DB.client.HOST
+        resp.port                       = self.DB.client.PORT
+        resp.name                       = self.DB.name
+        resp.info.connected             = self.d_DBref['connected']
+        resp.info.existsAlready         = self.d_DBref['existsAlready']
+        resp.info.error                 = self.d_DBref['error']
+        return resp
+
+    async def connect(self, DBname:str) -> responseModel.databaseDesc:
         self.d_DBref:dict                   = await self.connectDB(DBname)
+        # pudb.set_trace()
         self.DB:AIO.AsyncIOMotorDatabase    = self.d_DBref['DB']
+        return self.database_serialize()
 
 class mongoCollection():
 
@@ -211,12 +237,21 @@ class mongoCollection():
         :return: a dictionary with the collection, an element count, and
                     a status
         """
-
-        l_collection:list   = await self.DB.list_collection_names()
+        error:str           = ""
+        connected:bool      = True
+        l_collection:list   = []
+        try:
+            l_collection    = await self.DB.list_collection_names()
+        except Exception as e:
+            #pudb.set_trace()
+            error           = f'{e}'
+            connected       = False
         d_ret:dict          = {
+            'connected':    connected,
             'exists':       True if collection in l_collection else False,
             'interface':    self.DB[collection],
-            'elements':     0
+            'elements':     0,
+            'error':        error
         }
         if d_ret['exists']:
             filter:dict       = {}
@@ -224,14 +259,30 @@ class mongoCollection():
         return d_ret
 
     def __init__(self, DBobject:mongoDB) -> None:
-        self.DB:AIO.AsyncIOMotorDatabase    = DBobject.getDB()
+        self.DB:AIO.AsyncIOMotorClient      = DBobject.getDB()
         self.d_collection:dict              = {}
         self.noDuplicates:bool              = DBobject.args.noDuplicates
         self.addHashToDocument              = DBobject.args.useHashes
 
-    async def connect(self, name:str) -> None:
+
+    def collection_serialize(self) -> responseModel.collectionDesc:
+        #pudb.set_trace()
+        resp:responseModel.collectionDesc   = responseModel.collectionDesc()
+        resp.databaseName                   = self.collection.DB.name
+        resp.name                           = self.collection.collection.name
+        resp.fullName                       = self.collection.collection.full_name
+        resp.info.connected                 = self.d_collection['connected']
+        resp.info.existsAlready             = self.d_collection['exists']
+        resp.info.elements                  = self.d_collection['elements']
+        resp.info.error                     = self.d_collection['error']
+        return resp
+
+    async def connect(self, name:str) -> responseModel.collectionDesc:
         self.d_collection:dict  = await self.connectCollection(name)
         self.collection:AIO.AsyncIOMotorCollection \
                                 = self.d_collection['interface']
+        return self.collection_serialize()
+
+
 
 
