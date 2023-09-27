@@ -78,7 +78,7 @@ def main(argv:list[str]=[]) -> int:
     :param argv: a CLI argv list of strings.
     """
     global options
-    pudb.set_trace()
+    # pudb.set_trace()
     add_help:bool               = False
     parser:ArgumentParser       = parser_setup(
                                     'A client for interacting with mongo DBs',
