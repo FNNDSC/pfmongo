@@ -19,5 +19,5 @@ server. It accepts no arguments.
 def showAll(ctx:click.Context) -> None:
     # pudb.set_trace()
     options:Namespace   = ctx.obj['options']
-    options.do          = 'showAll'
+    options.do          = 'showAllDB'
     showall:int         = driver.run(options)
