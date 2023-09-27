@@ -14,6 +14,10 @@ class messageType(Enum):
     INFO    = 1
     ERROR   = 2
 
+class loggingType(Enum):
+    CONSOLE = 1
+    NDJSON  = 2
+
 class time(BaseModel):
     """A simple model that has a time string field"""
     time                                : str
