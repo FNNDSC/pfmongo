@@ -9,8 +9,9 @@ from    typing                      import Literal
 import  os, sys
 from    pathlib                     import Path
 import  appdirs
-from    pfmongo.models              import dataModel
+from    pfmongo.models              import dataModel, responseModel
 from    typing                      import Callable
+import  pudb
 try:
     from    .               import __pkg, __version__
 except:
@@ -20,7 +21,11 @@ NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
 
-def complain(message:str, code:int, level:messageType = messageType.INFO) -> int:
+def complain(
+        message:str,
+        code:int,
+        level:messageType = messageType.INFO
+) -> int:
     """
     Generate a "complaint" with a message, code, and info level
 
@@ -34,9 +39,18 @@ def complain(message:str, code:int, level:messageType = messageType.INFO) -> int
             CL  = C.RED
         case messageType.INFO:
             CL  = C.CYAN
-    print(f"\n{CL}{level.name}{NC}")
-    if message: print(f"{message}\n")
+    if settings.appsettings.logging == dataModel.loggingType.CONSOLE:
+        print(f"\n{CL}{level.name}{NC}")
+        if message:
+            print(f"{message}")
+    else:
+        print(f'{{"level": "{level.name}"}}')
+        pudb.set_trace()
+        if message: print(f'{{"message": "{to_singleLine(message)}"}}')
     return code
+
+def to_singleLine(message:str) -> str:
+    return message.replace('\n', ' ')
 
 def URI_sanitize(URI:str) -> str:
     return URI.replace(':', '-').replace('/', '')
@@ -58,6 +72,42 @@ def sessionUser_notSet() -> int:
                 Please set with:
 
                         export {GR}MD_SESSIONUSER{NC}={CY}yourName{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    return 0
+
+def connection_failureCheck(
+        connection:responseModel.databaseDesc|responseModel.collectionDesc
+) -> int:
+    if not connection.info.connected:
+        return complain(f'''
+                A connection error has occured. This typically means that the
+                mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    return 0
+
+def usage_failureCheck(
+        usage:responseModel.databaseNamesUsage
+) -> int:
+    if not usage.info.connected:
+        return complain(f'''
+                A connection error has occured. This typically means that the
+                mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
                 ''',
                 5,
                 dataModel.messageType.ERROR)
@@ -177,7 +227,7 @@ def env_failCheck(options:Namespace) -> int:
             as argument must be specified. ''', 2,  messageType.ERROR)
     return 0
 
-def run(options:Namespace) -> Literal[1, 0]:
+def run(options:Namespace) -> int:
 
     # Create the mongodb object
     mongodb:pfmongo.Pfmongo     = pfmongo.Pfmongo(options)
@@ -191,5 +241,5 @@ def run(options:Namespace) -> Literal[1, 0]:
     except Exception as e:
         print(mongodb.responseData.model_dump())
 
-    return 0
+    return mongodb.exitCode
 
