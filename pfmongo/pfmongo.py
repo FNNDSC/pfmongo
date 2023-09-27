@@ -25,7 +25,7 @@ from        loguru              import  logger
 from        pathlib             import  Path
 from        pfmisc              import  Colors as C
 import      pudb
-from        typing              import Any, Callable
+from        typing              import Any, Callable, Optional
 from        pydantic            import HttpUrl
 
 from        pfmongo.config      import settings
@@ -241,9 +241,7 @@ class Pfmongo:
 
         self.responseData:responseModel.mongodbResponse = \
                 responseModel.mongodbResponse()
-
-    #async def connectDB(self) -> None:
-    #    await self.dbAPI.connectDB(self.args.DBname)
+        self.exitCode:int               = 1
 
     def jsonFile_intoDictRead(self) -> dict[bool,dict]:
         d_json:dict     = {
@@ -267,17 +265,42 @@ class Pfmongo:
         d_resp.message  = message
         return d_resp
 
-    async def showAll(self):
-        l_DBs:list          = await self.dbAPI.showall()
-        d_resp:dict         = {
-            'status'    : True,
-            'databases' : l_DBs
-        }
+    def responseData_logConnection(
+            self,
+            connection: responseModel.databaseDesc |\
+                        responseModel.collectionDesc
+    ) -> responseModel.mongodbResponse:
         self.responseData   = self.responseData_build(
-                                d_resp,
-                                'Available databases'
-                            )
+            {
+                'status':   connection.info.connected,
+                'connect':  connection
+            }, self.connect_message(connection)
+        )
+        return self.responseData
 
+    def responseData_logUsage(
+            self,
+            usage: responseModel.databaseNamesUsage
+    ) -> responseModel.mongodbResponse:
+        self.responseData   = self.responseData_build(
+            {
+                'status':   usage.info.connected,
+                'connect':  usage
+            }, self.usage_message(usage)
+        )
+        return self.responseData
+
+    async def showAllDB(self) -> responseModel.databaseNamesUsage:
+        allDB:responseModel.databaseNamesUsage = \
+                await self.dbAPI.database_names_get()
+        self.responseData   = self.responseData_logUsage(allDB)
+        return allDB
+
+    async def showAllCollections(self) -> responseModel.collectionNamesUsage:
+        allCollections:responseModel.collectionNamesUsage = \
+           responseModel.collectionNamesUsage()
+        return allCollections
+ 
     async def documentAdd(self):
         d_json:dict         = self.jsonFile_intoDictRead()
         if d_json['status']:
@@ -293,32 +316,56 @@ class Pfmongo:
                                         'Document insert failure'
                                     )
 
-    async def connectDB(self, DBname:str) -> None:
-        pudb.set_trace()
-        #d_DB:dict           = await self.dbAPI.connectDB(self.args.argument)
-        self.responseData   = self.responseData_build(
-            {
-                'status':   True,
-                'connect':  await self.dbAPI.connectDB(DBname)
-            },
-            f'Connected to {self.args.argument}'
-        )
-        if self.responseData.response['status']:
-            driver.DBname_stateFileSave(self.args, DBname)
+    def usage_message(
+            self,
+            usage:responseModel.databaseNamesUsage
+    ) -> str:
+        message:str         = ""
+        if not usage.info.connected:
+            message         = f'Could not connect to mongo database"'
+            self.exitCode   = 10
+        else:
+            message         = f'Connected to mongo database"'
+            self.exitCode   = 0
+        return message
 
-    async def connectCollection(self, collectionName:str) -> None:
-        pudb.set_trace()
-        #d_DB:dict           = await self.dbAPI.connectDB(self.args.argument)
-        await self.connectDB(driver.DBname_get(self.args))
-        self.responseData   = self.responseData_build(
-            {
-                'status':   True,
-                'connect':  await self.dbAPI.collection_add(collectionName)
-            },
-            f'Connected to {self.args.argument}'
-        )
+    def connect_message(
+            self,
+            connect:responseModel.databaseDesc|responseModel.collectionDesc
+    ) -> str:
+        message:str         = ""
+        if not connect.info.connected:
+            message         = f'Could not connect to mongo {connect.otype}: "{connect.name}"'
+            self.exitCode   = 10
+        else:
+            message         = f'Connected to mongo {connect.otype}: "{connect.name}"'
+            self.exitCode   = 0
+        return message
+
+    async def connectDB(self, DBname:str) -> responseModel.databaseDesc:
+        connect:responseModel.databaseDesc  = await self.dbAPI.connect(DBname)
+        self.responseData   = self.responseData_logConnection(connect)
         if self.responseData.response['status']:
-            driver.DBname_stateFileSave(self.args, DBname)
+            driver.stateFileSave(self.args, DBname, driver.DB_stateFileResolve)
+        return connect
+
+    async def connectCollection(self, collectionName:str) \
+    -> responseModel.collectionDesc|responseModel.databaseDesc:
+        connectDB:responseModel.databaseDesc    = \
+                await self.connectDB(driver.DBname_get(self.args))
+        if not connectDB.info.connected:
+            return connectDB
+        connectCol:responseModel.collectionDesc = \
+                await self.dbAPI.collection_connect(collectionName)
+        self.reponseData    = self.responseData_logConnection(connectCol)
+        # pudb.set_trace()
+        if self.responseData.response['status']:
+            driver.stateFileSave(
+                    self.args,
+                    collectionName,
+                    driver.collection_stateFileResolve
+            )
+        return connectCol
 
     async def service(self) -> None:
         pudb.set_trace()
@@ -327,11 +374,17 @@ class Pfmongo:
             return
 
         match(self.args.do):
-            case 'showAll':
-                await self.showAll()
+            case 'showAllDB':
+                driver.usage_failureCheck(
+                    await self.showAllDB()
+                )
             case 'connectDB':
-                await self.connectDB(self.args.argument)
+                driver.connection_failureCheck(
+                    await self.connectDB(self.args.argument)
+                )
             case 'connectCollection':
-                await self.connectCollection(self.args.argument)
+                driver.connection_failureCheck(
+                    await self.connectCollection(self.args.argument)
+                )
             case 'addDocument':
                 await self.documentAdd()
