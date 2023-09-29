@@ -96,7 +96,7 @@ def connection_failureCheck(
     return 0
 
 def usage_failureCheck(
-        usage:responseModel.databaseNamesUsage
+        usage:responseModel.databaseNamesUsage|responseModel.collectionNamesUsage
 ) -> int:
     if not usage.info.connected:
         return complain(f'''
@@ -180,13 +180,42 @@ def stateFileRead(options:Namespace, f_stateFileResolve: Callable[[Namespace], P
         contents        = statefile.read_text()
     return contents
 
+def collectionName_get(options:Namespace) -> str:
+    """
+    Determine the name of the collection within the mongo server to use.
+
+    Order of precedence:
+        * if '--useCollection' (collectionName) in args, use this as
+          the collection and set the same value in the settings object;
+        * if no '--useCollection', check for a state file in the options.statePath
+          and if this exists, read that file and set the collectionName and
+          settings object;
+        * if neither, then check the settings object and set the collectionName
+          to that;
+        * otherwise, failing everthing, return an empty string.
+
+    :param options: the set of CLI (and more) options
+    :return: a string database name
+    """
+    if options.collectionName:
+        settings.mongosettings.MD_COLLECTION = options.collectionName
+        collectionName_stateFileSave(options, options.collectionName)
+    if not options.collectionName:
+        collectionName:str      = collectionName_stateFileRead(options)
+        if collectionName:
+            options.collectionName                  = collectionName
+            settings.mongosettings.MD_COLLECTION    = options.DBname
+    if not options.collectionName:
+        options.collectionName  = settings.mongosettings.MD_COLLECTION
+    return options.collectionName
+
 def DBname_get(options:Namespace) -> str:
     """
     Determine the name of the database within the mongo server to use.
 
     Order of precedence:
-        * if '--DBname' in args, use this as the DBname and set the same
-          value in the settings object;
+        * if '--useDB' (i.e. DBname) in args, use this as the DBname
+          and set the same value in the settings object;
         * if no '--DBname', check for a state file in the options.statePath
           and if this exists, read that file and set the DBname and settings
           object;
