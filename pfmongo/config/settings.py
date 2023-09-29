@@ -6,6 +6,7 @@ from    typing              import Optional
 class Mongo(BaseSettings):
     MD_URI:str          = "localhost:27017"
     MD_DB:str           = ""
+    MD_COLLECTION:str   = ""
     MD_username:str     = "username"
     MD_password:str     = "password"
     MD_sessionUser:str  = ""
@@ -15,7 +16,10 @@ class Mongo(BaseSettings):
 class App(BaseSettings):
     logging:dataModel.loggingType = dataModel.loggingType.CONSOLE
 
-logging_val:Optional[str] = os.environ['LOGGING']
+
+logging_val:Optional[str] = 'CONSOLE' 
+if 'LOGGING' in os.environ:
+    logging_val         = os.environ['LOGGING']
 logging_enum:dataModel.loggingType  = dataModel.loggingType.CONSOLE
 if logging_val:
     try:
