@@ -300,7 +300,7 @@ class Pfmongo:
         allCollections:responseModel.collectionNamesUsage = \
            responseModel.collectionNamesUsage()
         return allCollections
- 
+
     async def documentAdd(self):
         d_json:dict         = self.jsonFile_intoDictRead()
         if d_json['status']:
@@ -377,6 +377,10 @@ class Pfmongo:
             case 'showAllDB':
                 driver.usage_failureCheck(
                     await self.showAllDB()
+                )
+            case 'showAllCollections':
+                driver.usage_failureCheck(
+                    await self.showAllCollections()
                 )
             case 'connectDB':
                 driver.connection_failureCheck(
