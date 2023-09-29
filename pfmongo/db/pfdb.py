@@ -156,6 +156,7 @@ class mongoDB():
 
     def database_serialize(self) -> responseModel.databaseDesc:
         resp:responseModel.databaseDesc = responseModel.databaseDesc()
+        # pudb.set_trace()
         resp.host                       = self.DB.client.HOST
         resp.port                       = self.DB.client.PORT
         resp.name                       = self.DB.name
