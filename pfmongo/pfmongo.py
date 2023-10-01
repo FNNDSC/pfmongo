@@ -296,9 +296,18 @@ class Pfmongo:
         self.responseData   = self.responseData_logUsage(allDB)
         return allDB
 
-    async def showAllCollections(self) -> responseModel.collectionNamesUsage:
-        allCollections:responseModel.collectionNamesUsage = \
+    async def showAllCollections(self) \
+    -> responseModel.collectionNamesUsage|responseModel.databaseNamesUsage:
+        allCollections:responseModel.collectionNamesUsage   = \
            responseModel.collectionNamesUsage()
+        connectDB:responseModel.databaseDesc    = \
+                await self.connectDB(driver.DBname_get(self.args))
+        if not connectDB.info.connected:
+            databaseUsageFail:responseModel.databaseNamesUsage = \
+                                responseModel.databaseNamesUsage()
+            databaseUsageFail.info  = connectDB.info
+            return databaseUsageFail
+        allCollections = await self.dbAPI.collection_names_get()
         return allCollections
 
     async def documentAdd(self):
