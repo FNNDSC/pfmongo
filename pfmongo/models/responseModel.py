@@ -35,7 +35,7 @@ class databaseNamesUsage(BaseModel):
 
 class collectionNamesUsage(BaseModel):
     otype:str                       = "accessing collection names"
-    databaseNames:list              = []
+    collectionNames:list            = []
     info:collectionConnectStatus    = collectionConnectStatus()
 
 class databaseDesc(BaseModel):
