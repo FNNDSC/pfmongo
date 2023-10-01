@@ -44,6 +44,12 @@ class mongoDB():
         resp.databaseNames  = l_DBs
         return resp
 
+    async def collection_names_get(self) -> responseModel.collectionNamesUsage:
+        collection:responseModel.collectionNamesUsage  = \
+                        responseModel.collectionNamesUsage()
+        collection.collectionNames  = await self.DB.list_collection_names()
+        return collection
+
     async def connectDB(self, DBname:str) -> dict:
         """
         Connect to the DB called <DBname> (or create the DB if it does
