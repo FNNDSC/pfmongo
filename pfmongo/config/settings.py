@@ -17,7 +17,7 @@ class App(BaseSettings):
     logging:dataModel.loggingType = dataModel.loggingType.CONSOLE
 
 
-logging_val:Optional[str] = 'CONSOLE' 
+logging_val:Optional[str] = 'CONSOLE'
 if 'LOGGING' in os.environ:
     logging_val         = os.environ['LOGGING']
 logging_enum:dataModel.loggingType  = dataModel.loggingType.CONSOLE
