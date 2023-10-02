@@ -12,7 +12,7 @@ __version__ = "0.9.9"
 import sys
 
 from    pfmongo             import pfmongo
-from    pfmongo             import driver
+from    pfmongo             import env
 from    pfmongo.commands    import fs
 from    pfmongo.pfmongo     import parser_setup, parser_interpret, parser_JSONinterpret
 
@@ -32,13 +32,7 @@ import  appdirs
 import  click
 from    click.formatting    import wrap_text
 
-try:
-    from    commands        import  database, collection, fs, man
-    from    commands        import  man as manual
-
-except:
-    from    .commands       import  database, collection, fs, man
-    from    .commands       import  man as manual
+from    pfmongo.commands    import database, collection, fs, man, state
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -88,7 +82,7 @@ def main(argv:list[str]=[]) -> int:
     # Should we show (and exit) some man page help?
     options, extra              = parser_interpret(parser, argv)
 
-    if not driver.env_statePathSet(options):
+    if not env.env_statePathSet(options):
         return 10
 
     # This is the result of argparse
@@ -128,15 +122,12 @@ def app(ctx:click.Context,
     ctx.obj['options']          = options
 
     subcommand:str|None         = click.get_current_context().invoked_subcommand
-    #pudb.set_trace()
-    #if subcommand != 'fs':
-    #    envCheckFailure:int     = driver.env_failCheck(options)
-    #    if envCheckFailure:
-    #        return envCheckFailure
+
     return 0
 
 app.add_command(database.database)
 app.add_command(collection.collection)
 app.add_command(fs.fs)
+app.add_command(state.state)
 #app.add_command(man.man)
 
