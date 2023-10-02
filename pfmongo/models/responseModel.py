@@ -4,15 +4,21 @@ str_description = """
 
 """
 
-from logging import info
 from    pydantic            import BaseModel, Field
 from    typing              import Optional, List, Dict
 from    datetime            import datetime
 from    enum                import Enum
 from    pathlib             import Path
+from    pfmongo.config      import settings
+
+class stateResponse(BaseModel):
+    database:str                    = ""
+    collection:str                  = ""
+    app:settings.App                = settings.appsettings
+    mongo:settings.Mongo            = settings.mongosettings
 
 class mongodbResponse(BaseModel):
-    """The model returned internally"""
+    """The response model from the mongodb server"""
     status:bool                     = False
     message:str                     = ''
     response:dict                   = {}
@@ -36,7 +42,7 @@ class databaseNamesUsage(BaseModel):
 class collectionNamesUsage(BaseModel):
     otype:str                       = "accessing collection names"
     collectionNames:list            = []
-    info:collectionConnectStatus    = collectionConnectStatus()
+    info:databaseConnectStatus      = databaseConnectStatus()
 
 class databaseDesc(BaseModel):
     otype:str                       = "database"
