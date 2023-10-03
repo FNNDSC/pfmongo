@@ -39,7 +39,7 @@ This command shows internal program state. It accepts no arguments.
 """)
 @click.pass_context
 def showAll(ctx:click.Context) -> int:
-    pudb.set_trace()
+    #pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     options.do          = 'showAllState'
     showall:int         = driver.run(options, stateResponse_eval)
