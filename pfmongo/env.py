@@ -250,17 +250,22 @@ def DBname_get(options:Namespace) -> str:
 def env_failCheck(options:Namespace) -> int:
     if '--help' in sys.argv:
         return 0
-    if not options.DBname:
+    if not DBname_get(options):
         return complain(f'''
             Unable to determine which database to use.
             A `--useDB` flag with the database name as
             argument must be specified or alternatively
-            be set in the environment as MD_DB. ''', 1, messageType.ERROR)
-    if not options.collectionName:
+            be set in the environment as MD_DB or exist
+            as a previous configuration state. ''',
+            1, messageType.ERROR)
+    if not collectionName_get(options):
         return complain(f'''
             Unable to determine the collection within
-            the database {C.YELLOW}{options.DBname}{NC} to use.
+            the database {C.YELLOW}{DBname_get(options)}{NC} to use.
 
             A `--useCollection` flag with the collection
-            as argument must be specified. ''', 2,  messageType.ERROR)
+            as argument must be specified or alternatively
+            be set in the environment as MD_COLLECTION or
+            exist as a previous configuration state. ''',
+            2,  messageType.ERROR)
     return 0
