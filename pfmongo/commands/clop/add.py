@@ -2,28 +2,32 @@ import  click
 import  pudb
 from    pfmongo         import  driver
 from    argparse        import  Namespace
-import  env
+from    pfmongo         import  env
 import  json
 from    pfmisc          import  Colors as C
 
 NC  = C.NO_COLOUR
-
+GR  = C.GREEN
+CY  = C.CYAN
 
 from pfmongo.models.dataModel import messageType
 
-def env_failure(options:Namespace) -> int:
+def env_OK(options:Namespace, d_doc:dict) -> bool | dict:
     envFailure:int    = env.env_failCheck(options)
-    if envFailure: return envFailure
-    if not options.addDocument:
-        return env.complain(
-            "The document to add was not specified", 1, messageType.ERROR
-        )
-    return 0
-
+    if envFailure: return False
+    if not d_doc['status']:
+        return bool(env.complain(
+            d_doc['data'], 1, messageType.ERROR
+        ))
+    if 'data' in d_doc:
+        return d_doc['data']
+    else:
+        return False
 
 def jsonFile_intoDictRead(filename:str) -> dict[bool,dict]:
     d_json:dict     = {
         'status':   False,
+        'filename': filename,
         'data':     {}
     }
     try:
@@ -48,20 +52,21 @@ session state.
 """)
 @click.option('--document',
     type  = str,
-    help  = "A JSON formatted file to save to the collection in the database")
+    help  = \
+    "The name of a JSON formatted file to save to the collection in the database")
 @click.option('--setid',
     type  = str,
     help  = \
     "If specified, set the 'id' in the mongo collection to the passed string",
     default = '')
 @click.pass_context
-def add(ctx:click.Context, document:str, setid:str=""):
+def add(ctx:click.Context, document:str, setid:str="") -> int:
     pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     options.do          = 'addDocument'
-    options.argument    = f'{document},{setid}'
-    if env_failure(options):
+    d_data:dict|bool    = env_OK(options, jsonFile_intoDictRead(document))
+    if not d_data:
         return 100
+    options.argument    = d_data
     add:int = driver.run(options)
-    print(f"Will add {document}")
     return add
