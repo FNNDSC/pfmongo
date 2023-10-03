@@ -254,18 +254,18 @@ class Pfmongo:
                 responseModel.mongodbResponse()
         self.exitCode:int               = 1
 
-    def jsonFile_intoDictRead(self) -> dict[bool,dict]:
-        d_json:dict     = {
-            'status':   False,
-            'data':     {}
-        }
-        try:
-            f = open(self.args.addDocument)
-            d_json['data']      = json.load(f)
-            d_json['status']    = True
-        except Exception as e:
-            d_json['data']      = str(e)
-        return d_json
+    #def jsonFile_intoDictRead(self) -> dict[bool,dict]:
+    #    d_json:dict     = {
+    #        'status':   False,
+    #        'data':     {}
+    #    }
+    #    try:
+    #        f = open(self.args.addDocument)
+    #        d_json['data']      = json.load(f)
+    #        d_json['status']    = True
+    #    except Exception as e:
+    #        d_json['data']      = str(e)
+    #    return d_json
 
     def responseData_logConnection(
             self,
@@ -315,20 +315,19 @@ class Pfmongo:
         self.responseData   = self.responseData_logUsage(allCollections)
         return allCollections
 
-    async def documentAdd(self):
-        d_json:dict         = self.jsonFile_intoDictRead()
-        if d_json['status']:
-            d_resp:dict     = await self.dbAPI.insert_one(
+    async def documentAdd(self, d_json:dict):
+#        await self.connectCollection(self.args.collectionName)
+        pudb.set_trace()
+        d_resp:dict         = await self.dbAPI.insert_one(
                                 intoCollection  = self.args.collectionName,
-                                document        = d_json['data']
-                        )
-            pudb.set_trace()
-            self.responseData       = responseData_build(
-                                        d_resp,
-                                        'Document inserted successfully'\
-                                            if d_resp['status'] else    \
-                                        'Document insert failure'
-                                    )
+                                document        = d_json
+                            )
+        self.responseData   = responseData_build(
+                                d_resp,
+                                'Document inserted successfully'\
+                                    if d_resp['status'] else    \
+                                'Document insert failure'
+                            )
 
     def usage_message(
             self,
@@ -408,4 +407,7 @@ class Pfmongo:
                     await self.connectCollection(self.args.argument)
                 )
             case 'addDocument':
-                await self.documentAdd()
+                env.connection_failureCheck(
+                    await self.connectCollection(self.args.collectionName)
+                )
+                await self.documentAdd(self.args.argument)
