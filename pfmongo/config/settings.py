@@ -12,10 +12,13 @@ class Mongo(BaseSettings):
     MD_sessionUser:str  = ""
     stateDBname:str     = "db.txt"
     stateColname:str    = "collection.txt"
+    stateDupname:str    = "duplicates.txt"
+    stateHashes:str     = "hashes.txt"
 
 class App(BaseSettings):
     logging:dataModel.loggingType = dataModel.loggingType.CONSOLE
-
+    noDuplicates:bool   = True
+    useHashes:bool      = True
 
 logging_val:Optional[str] = 'CONSOLE'
 if 'LOGGING' in os.environ:
