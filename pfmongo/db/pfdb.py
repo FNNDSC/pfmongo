@@ -82,6 +82,7 @@ class mongoDB():
         return d_data
 
     async def insert_one(self, **kwargs) -> dict[bool, dict]:
+        pudb.set_trace()
         d_document:dict     = {}
         d_data:dict         = {
                 'status':   False,
@@ -99,7 +100,7 @@ class mongoDB():
                                 if d['name'] == intoCollection]
         for d in ld_collection:
             d_data          = self.insert_one_response(
-                                await d['collection'].document_add(d_document)
+                                await d['object'].document_add(d_document)
                             )
         return d_data
 
@@ -111,7 +112,9 @@ class mongoDB():
         colObj:mongoCollection      = mongoCollection(self)
         return {
                 "name"      : name,
-                "collection": await colObj.connect(name)
+                "collection": await colObj.connect(name),
+                "object":   colObj,
+                "interface":  self.Mongo[name]
         }
 
     async def collection_connect(self, name:str) -> responseModel.collectionDesc:
@@ -165,7 +168,7 @@ class mongoDB():
         # pudb.set_trace()
         resp.host                       = self.DB.client.HOST
         resp.port                       = self.DB.client.PORT
-        resp.name                       = self.DB.name
+        resp.name                       = str(self.DB.name)
         resp.info.connected             = self.d_DBref['connected']
         resp.info.existsAlready         = self.d_DBref['existsAlready']
         resp.info.error                 = self.d_DBref['error']
@@ -216,7 +219,7 @@ class mongoCollection():
                 'acknowledged': False,
                 'inserted_id':  "-1"
         }
-        if self.hash_addToDocument:
+        if self.addHashToDocument:
             d_data          = self.hash_addToDocument(d_data)
         if await self.is_duplicate(d_data) and self.noDuplicates:
            d_resp['error']  = 'Duplicate document hash found.'
@@ -266,7 +269,7 @@ class mongoCollection():
         return d_ret
 
     def __init__(self, DBobject:mongoDB) -> None:
-        self.DB:AIO.AsyncIOMotorClient      = DBobject.getDB()
+        self.DB:AIO.AsyncIOMotorDatabase    = DBobject.getDB()
         self.d_collection:dict              = {}
         self.noDuplicates:bool              = DBobject.args.noDuplicates
         self.addHashToDocument              = DBobject.args.useHashes
@@ -275,9 +278,9 @@ class mongoCollection():
     def collection_serialize(self) -> responseModel.collectionDesc:
         #pudb.set_trace()
         resp:responseModel.collectionDesc   = responseModel.collectionDesc()
-        resp.databaseName                   = self.collection.DB.name
-        resp.name                           = self.collection.collection.name
-        resp.fullName                       = self.collection.collection.full_name
+        resp.databaseName                   = str(self.collection.database.name)
+        resp.name                           = str(self.collection.name)
+        resp.fullName                       = str(self.collection.full_name)
         resp.info.connected                 = self.d_collection['connected']
         resp.info.existsAlready             = self.d_collection['exists']
         resp.info.elements                  = self.d_collection['elements']
