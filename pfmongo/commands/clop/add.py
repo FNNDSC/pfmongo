@@ -16,7 +16,7 @@ def env_OK(options:Namespace, d_doc:dict) -> bool | dict:
     envFailure:int    = env.env_failCheck(options)
     if envFailure: return False
     if not d_doc['status']:
-        return bool(env.complain(
+        return not bool(env.complain(
             d_doc['data'], 1, messageType.ERROR
         ))
     if 'data' in d_doc:
