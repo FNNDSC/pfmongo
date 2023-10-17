@@ -4,6 +4,7 @@ from    pfmongo         import  driver
 from    argparse        import  Namespace
 from    pfmongo         import  env
 import  json
+from    typing          import  Union
 from    pfmisc          import  Colors as C
 
 NC  = C.NO_COLOUR
@@ -12,7 +13,7 @@ CY  = C.CYAN
 
 from pfmongo.models.dataModel import messageType
 
-def env_OK(options:Namespace, d_doc:dict) -> bool | dict:
+def env_OK(options:Namespace, d_doc:dict) -> bool|dict:
     envFailure:int    = env.env_failCheck(options)
     if envFailure: return False
     if not d_doc['status']:
@@ -64,9 +65,14 @@ def add(ctx:click.Context, document:str, setid:str="") -> int:
     pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     options.do          = 'addDocument'
-    d_data:dict|bool    = env_OK(options, jsonFile_intoDictRead(document))
-    if not d_data:
+    d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(document))
+    d_data:dict         = {}
+    if not d_dataOK:
         return 100
+    if isinstance(d_dataOK, dict):
+        d_data          = d_dataOK
+    if setid:
+        d_data['_id']   = setid
     options.argument    = d_data
     add:int = driver.run(options)
     return add
