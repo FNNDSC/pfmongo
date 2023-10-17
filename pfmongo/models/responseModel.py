@@ -23,6 +23,8 @@ class mongodbResponse(BaseModel):
     message:str                     = ''
     response:dict                   = {}
 
+# Connection status returns
+
 class databaseConnectStatus(BaseModel):
     connected:bool                  = False
     existsAlready:bool              = False
@@ -34,6 +36,35 @@ class collectionConnectStatus(BaseModel):
     elements:int                    = 0
     error:str                       = ""
 
+# API connection returns
+
+class databaseDesc(BaseModel):
+    otype:str                       = "database"
+    host:str                        = ""
+    port:int                        = -1
+    name:str                        = ""
+    info:databaseConnectStatus      = databaseConnectStatus()
+
+class collectionDesc(BaseModel):
+    database:databaseDesc           = databaseDesc()
+    otype:str                       = "collection"
+    databaseName:str                = ""
+    name:str                        = ""
+    fullName:str                    = ""
+    info:collectionConnectStatus    = collectionConnectStatus()
+
+# API usage returns
+
+class showAllDBusage(BaseModel):
+    otype:str                       = "accessing database names"
+    databaseNames:list              = []
+    info:databaseConnectStatus      = databaseConnectStatus()
+
+class showAllcollectionsUsage(BaseModel):
+    otype:str                       = "accessing collection names"
+    collectionNames:list            = []
+    info:databaseConnectStatus      = databaseConnectStatus()
+
 class databaseNamesUsage(BaseModel):
     otype:str                       = "accessing database names"
     databaseNames:list              = []
@@ -44,21 +75,9 @@ class collectionNamesUsage(BaseModel):
     collectionNames:list            = []
     info:databaseConnectStatus      = databaseConnectStatus()
 
-class databaseDesc(BaseModel):
-    otype:str                       = "database"
-    host:str                        = ""
-    port:int                        = -1
-    name:str                        = ""
-    info:databaseConnectStatus      = databaseConnectStatus()
-
-class collectionDesc(BaseModel):
-    otype:str                       = "collection"
-    databaseName:str                = ""
-    name:str                        = ""
-    fullName:str                    = ""
-    info:collectionConnectStatus    = collectionConnectStatus()
-
-class time(BaseModel):
-    """A simple model that has a time string field"""
-    time                                : str
+class documentAddUsage(BaseModel):
+    otype:str                       = "adding document"
+    documentName:str                = ""
+    document:dict                   = {}
+    collection:collectionDesc       = collectionDesc()
 
