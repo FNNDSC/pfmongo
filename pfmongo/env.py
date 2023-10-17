@@ -12,7 +12,7 @@ import  os, sys
 from    pathlib                     import Path
 import  appdirs
 from    pfmongo.models              import dataModel, responseModel
-from    typing                      import Callable, Optional
+from    typing                      import Callable, Optional, Any
 try:
     from    .               import __pkg, __version__
 except:
@@ -78,14 +78,34 @@ def sessionUser_notSet() -> int:
                 dataModel.messageType.ERROR)
     return 0
 
-def connection_failureCheck(
-        connection:responseModel.databaseDesc|responseModel.collectionDesc
+def response_exitCode(var:      responseModel.databaseDesc  |\
+                                responseModel.collectionDesc
 ) -> int:
+    exitCode:int    = 0
+    match var:
+        case responseModel.databaseDesc():
+            exitCode    = 0 if var.info.connected else 100
+    return exitCode
+
+def response_messageDesc(var:   responseModel.databaseDesc |\
+                                responseModel.collectionDesc
+) -> str:
+    message:str     = ""
+    match var:
+        case responseModel.databaseDesc():
+            message = f'Success while connecting {var.otype}: "{var.name}"'\
+                      if var.info.connected else \
+                      f'Could not connect to mongo {var.otype}: "{var.name}"'
+    return message
+
+def connectDB_failureCheck(
+        connection:responseModel.databaseDesc
+) -> responseModel.databaseDesc:
     if not connection.info.connected:
-        return complain(f'''
-                A connection error has occured. This typically means that the
-                mongo DB service has either not been started or has not been
-                specified correctly.
+        complain(f'''
+                A database connection error has occured. This typically means
+                that the mongo DB service has either not been started or has
+                not been specified correctly.
 
                 Please check the service settings. Usually you might just
                 need to start the monogo service with:
@@ -99,14 +119,75 @@ def connection_failureCheck(
                 ''',
                 5,
                 dataModel.messageType.ERROR)
-    return 0
+    return connection
+
+def connectCollection_failureCheck(
+        connection:responseModel.collectionDesc
+) -> responseModel.collectionDesc:
+    if not connection.info.connected:
+        complain(f'''
+                A collection connection error has occured. This typically means
+                that an connection error was triggered in the housing database.
+                Usually this means that the mongo DB service itself has either
+                not been started or has not been specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+
+                Alternatively, check the mongo service credentials:
+
+                        {GR}export {CY}MD_USERNAME=<user>{NC} && \\
+                        {GR}export {CY}MD_PASSWORD=<password>{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    return connection
+
+
+def showAllcollections_failureCheck(
+        usage:responseModel.showAllcollectionsUsage
+) -> responseModel.showAllcollectionsUsage:
+    if not usage.info.connected:
+        complain(f'''
+                Unable to show all the collections in the database. This typically means
+                that the mongo DB service has either not been started or has not been
+                specified correctly, or has incorrect credentialling, or other issues.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    return usage
+
+def showAllDBUsage_failureCheck(
+        usage:responseModel.showAllDBusage
+) -> responseModel.showAllDBusage:
+    if not usage.info.connected:
+        complain(f'''
+                Unable to show all databases in the server. This typically means
+                that the mongo DB service has either not been started or has not been
+                specified correctly, or has incorrect credentialling, or other issues.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    return usage
 
 def usage_failureCheck(
         usage:responseModel.databaseNamesUsage|responseModel.collectionNamesUsage
-) -> int:
+) -> responseModel.databaseNamesUsage|responseModel.collectionNamesUsage:
     if not usage.info.connected:
-        return complain(f'''
-                A connection error has occured. This typically means that the
+        complain(f'''
+                A usage error has occured. This typically means that the
                 mongo DB service has either not been started or has not been
                 specified correctly.
 
@@ -117,7 +198,25 @@ def usage_failureCheck(
                 ''',
                 5,
                 dataModel.messageType.ERROR)
-    return 0
+    return usage
+
+def addDocument_failureCheck(
+        usage:responseModel.documentAddUsage
+) -> responseModel.documentAddUsage:
+    if not usage.collection.info.connected:
+        complain(f'''
+                A document add usage error has occured. This typically means that
+                the mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    return usage
 
 def env_statePathSet(options:Namespace) -> bool:
     """
