@@ -29,8 +29,8 @@ class mongoDB():
     def getDB(self) -> AIO.AsyncIOMotorDatabase:
         return self.DB
 
-    async def database_names_get(self) -> responseModel.databaseNamesUsage:
-        resp:responseModel.databaseNamesUsage = responseModel.databaseNamesUsage()
+    async def database_names_get(self) -> responseModel.showAllDBusage:
+        resp:responseModel.showAllDBusage = responseModel.showAllDBusage()
         l_DBs:list      = []
         error:str       = ""
         connected:bool  = True
@@ -44,9 +44,9 @@ class mongoDB():
         resp.databaseNames  = l_DBs
         return resp
 
-    async def collection_names_get(self) -> responseModel.collectionNamesUsage:
-        collection:responseModel.collectionNamesUsage  = \
-                        responseModel.collectionNamesUsage()
+    async def collection_names_get(self) -> responseModel.showAllcollectionsUsage:
+        collection:responseModel.showAllcollectionsUsage= \
+                        responseModel.showAllcollectionsUsage()
         collection.collectionNames  = await self.DB.list_collection_names()
         return collection
 
@@ -63,7 +63,7 @@ class mongoDB():
             dict[str, bool | Database[Any]]: DB -- the database
                                              bool -- False if DB is not yet created
         """
-        dbnames:responseModel.databaseNamesUsage = await self.database_names_get()
+        dbnames:responseModel.showAllDBusage = await self.database_names_get()
         d_ret:dict  = {
             'connected':        dbnames.info.connected,
             'existsAlready':    True if DBname in dbnames.databaseNames else False,
