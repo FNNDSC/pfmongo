@@ -267,56 +267,95 @@ class Pfmongo:
     #        d_json['data']      = str(e)
     #    return d_json
 
-    def responseData_logConnection(
+    #def responseData_logConnection(
+    #        self,
+    #        connection: responseModel.databaseDesc |\
+    #                    responseModel.collectionDesc
+    #) -> responseModel.mongodbResponse:
+    #    self.responseData   = responseData_build(
+    #        {
+    #            'status':   connection.info.connected,
+    #            'connect':  connection
+    #        }, self.connect_message(connection)
+    #    )
+    #    return self.responseData
+
+    #def responseData_logUsage(
+    #        self,
+    #        usage:  responseModel.databaseNamesUsage    |
+    #                responseModel.collectionNamesUsage
+    #) -> responseModel.mongodbResponse:
+    #    self.responseData   = responseData_build(
+    #        {
+    #            'status':   usage.info.connected,
+    #            'connect':  usage
+    #        }, self.usage_message(usage)
+    #    )
+    #    return self.responseData
+
+    def responseData_log(
             self,
-            connection: responseModel.databaseDesc |\
-                        responseModel.collectionDesc
+            data: Any
+#            data:   responseModel.databaseNamesUsage    |\
+#                    responseModel.collectionNamesUsage  |\
+#                    responseModel.databaseDesc          |\
+#                    responseModel.collectionDesc
     ) -> responseModel.mongodbResponse:
+        self.exitCode   = env.response_exitCode(data)
+#        message:str     = env.response_messageDesc(data)
+#        if isinstance(data,
+#                        responseModel.collectionDesc|\
+#                        responseModel.databaseDesc):
+#            message         = self.connect_message(data)
+#        else:
+#            message         = self.usage_message(data)
         self.responseData   = responseData_build(
             {
-                'status':   connection.info.connected,
-                'connect':  connection
-            }, self.connect_message(connection)
+                'status':   data.info.connected,
+                'connect':  data
+            }, env.response_messageDesc(data)
         )
         return self.responseData
 
-    def responseData_logUsage(
-            self,
-            usage:  responseModel.databaseNamesUsage    |
-                    responseModel.collectionNamesUsage
-    ) -> responseModel.mongodbResponse:
-        self.responseData   = responseData_build(
-            {
-                'status':   usage.info.connected,
-                'connect':  usage
-            }, self.usage_message(usage)
+    async def showAllDB(self) -> responseModel.showAllDBusage:
+        self.responseData = self.responseData_log(
+           (allDB := await self.dbAPI.database_names_get())
         )
-        return self.responseData
-
-    async def showAllDB(self) -> responseModel.databaseNamesUsage:
-        allDB:responseModel.databaseNamesUsage = \
-                await self.dbAPI.database_names_get()
-        self.responseData   = self.responseData_logUsage(allDB)
         return allDB
 
     async def showAllCollections(self) \
-    -> responseModel.collectionNamesUsage|responseModel.databaseNamesUsage:
-        allCollections:responseModel.collectionNamesUsage   = \
-           responseModel.collectionNamesUsage()
-        connectDB:responseModel.databaseDesc    = \
-                await self.connectDB(env.DBname_get(self.args))
-        if not connectDB.info.connected:
-            databaseUsageFail:responseModel.databaseNamesUsage = \
-                                responseModel.databaseNamesUsage()
-            databaseUsageFail.info  = connectDB.info
-            return databaseUsageFail
+    -> responseModel.showAllcollectionsUsage:
+        allCollections:responseModel.showAllcollectionsUsage = \
+                responseModel.showAllcollectionsUsage()
+        if not (connectDB := await self.connectDB(env.DBname_get(self.args))).info.connected:
+            allCollections.info = connectDB.info
+            return allCollections
         allCollections      = await self.dbAPI.collection_names_get()
         allCollections.info = connectDB.info
-        self.responseData   = self.responseData_logUsage(allCollections)
+        self.responseData   = self.responseData_log(allCollections)
         return allCollections
 
-    async def documentAdd(self, d_json:dict):
+#    async def showAllCollections3(self) \
+#    -> responseModel.collectionNamesUsage|responseModel.databaseNamesUsage:
+#        allCollections:responseModel.collectionNamesUsage   = \
+#           responseModel.collectionNamesUsage()
+#        connectDB:responseModel.databaseDesc    = \
+#                await self.connectDB(env.DBname_get(self.args))
+#        if not connectDB.info.connected:
+#            databaseUsageFail:responseModel.databaseNamesUsage = \
+#                                responseModel.databaseNamesUsage()
+#            databaseUsageFail.info  = connectDB.info
+#            return databaseUsageFail
+#        allCollections      = await self.dbAPI.collection_names_get()
+#        allCollections.info = connectDB.info
+#        self.responseData   = self.responseData_log(allCollections)
+#        return allCollections
+
+    async def documentAdd(self, d_json:dict) \
+    -> responseModel.documentAddUsage:
 #        await self.connectCollection(self.args.collectionName)
+        documentAdd:responseModel.documentAddUsage = \
+                responseModel.documentAddUsage()
         pudb.set_trace()
         d_resp:dict         = await self.dbAPI.insert_one(
                                 intoCollection  = self.args.collectionName,
@@ -328,52 +367,59 @@ class Pfmongo:
                                     if d_resp['status'] else    \
                                 'Document insert failure'
                             )
+        return documentAdd
 
-    def usage_message(
-            self,
-            usage:  responseModel.databaseNamesUsage    |
-                    responseModel.collectionNamesUsage
-    ) -> str:
-        message:str         = ""
-        if not usage.info.connected:
-            message         = f'Usage error while {usage.otype}'
-            self.exitCode   = 10
-        else:
-            message         = f'Success while {usage.otype}'
-            self.exitCode   = 0
-        return message
-
-    def connect_message(
-            self,
-            connect:responseModel.databaseDesc|responseModel.collectionDesc
-    ) -> str:
-        message:str         = ""
-        if not connect.info.connected:
-            message         = \
-                f'Could not connect to mongo {connect.otype}: "{connect.name}"'
-            self.exitCode   = 10
-        else:
-            message         = \
-                f'Connected to mongo {connect.otype}: "{connect.name}"'
-            self.exitCode   = 0
-        return message
+#    def usage_message(
+#            self,
+#            usage:  responseModel.databaseNamesUsage    |
+#                    responseModel.collectionNamesUsage
+#    ) -> str:
+#        message:str         = ""
+#        if not usage.info.connected:
+#            message         = f'Usage error while {usage.otype}'
+#            self.exitCode   = 10
+#        else
+#            message         = f'Success while {usage.otype}'
+#            self.exitCode   = 0
+#        return message
+#
+#    def connect_message(
+#            self,
+#            connect:responseModel.databaseDesc|responseModel.collectionDesc
+#    ) -> str:
+#        message:str         = ""
+#        if not connect.info.connected:
+#            message         = \
+#                f'Could not connect to mongo {connect.otype}: "{connect.name}"'
+#            self.exitCode   = 10
+#        else:
+#            message         = \
+#                f'Connected to mongo {connect.otype}: "{connect.name}"'
+#            self.exitCode   = 0
+#        return message
 
     async def connectDB(self, DBname:str) -> responseModel.databaseDesc:
-        connect:responseModel.databaseDesc  = await self.dbAPI.connect(DBname)
-        self.responseData   = self.responseData_logConnection(connect)
+        connect:responseModel.databaseDesc  = responseModel.databaseDesc()
+        self.responseData_log((connect := await self.dbAPI.connect(DBname)))
+#        connect:responseModel.databaseDesc  = await self.dbAPI.connect(DBname)
+#        self.responseData   = self.responseData_log(connect)
         if self.responseData.response['status']:
             env.stateFileSave(self.args, DBname, env.DB_stateFileResolve)
         return connect
 
     async def connectCollection(self, collectionName:str) \
-    -> responseModel.collectionDesc|responseModel.databaseDesc:
+    -> responseModel.collectionDesc:
+        connectCol:responseModel.collectionDesc = \
+                responseModel.collectionDesc()
         connectDB:responseModel.databaseDesc    = \
                 await self.connectDB(env.DBname_get(self.args))
+        connectCol.database = connectDB
         if not connectDB.info.connected:
-            return connectDB
+            return connectCol
         connectCol:responseModel.collectionDesc = \
-                await self.dbAPI.collection_connect(collectionName)
-        self.responseData   = self.responseData_logConnection(connectCol)
+                await self.dbAPI.collection_cnnect(collectionName)
+        connectCol.database = connectDB
+        self.responseData   = self.responseData_log(connectCol)
         # pudb.set_trace()
         if self.responseData.response['status']:
             env.stateFileSave(
@@ -383,6 +429,79 @@ class Pfmongo:
             )
         return connectCol
 
+    #async def databaseDesc_get(self) -> responseModel.databaseDesc:
+    #    DBconnect:responseModel.databaseDesc  = await self.dbAPI.connect(
+    #                                                env.DBname_get(self.args)
+    #                                            )
+    #    self.responseData   = self.responseData_log(DBconnect)
+    #    if self.resonseData.response['status']:
+    #        env.stateFileSave(self.args, env.DBname_get(self.args), env.DB_stateFileResolve)
+    #    self.responseData_log(DBconnect)
+    #    return DBconect
+
+    async def collectionDesc_check(self) -> responseModel.collectionDesc:
+        connectCol:responseModel.collectionDesc     = responseModel.collectionDesc()
+        DBdesc:responseModel.databaseDesc           = await self.connectDB(
+                                                        env.DBname_get(self.args)
+                                                      )
+        if not DBdesc.info.connected:
+            connectCol.info.error   = DBdesc.info.error
+            return connectCol
+        connectCol:responseModel.collectionDesc = \
+            await self.dbAPI.collection_connect(env.collectionName_get(self.args))
+        self.responseData   = self.responseData_log(connectCol)
+        if self.responseData.response['status']:
+            env.stateFileSave(
+                    self.args,
+                    env.collectionName_get(self.args),
+                    env.collection_stateFileResolve
+            )
+        return connectCol
+
+    async def showAllDB_do(self) \
+    -> responseModel.showAllDBusage:
+        return env.showAllDBUsage_failureCheck(
+            await self.showAllDB()
+        )
+
+    async def showAllCollections_do(self) \
+    -> responseModel.showAllcollectionsUsage:
+        return env.showAllcollections_failureCheck(
+            await self.showAllCollections()
+        )
+
+    async def connectDB_do(self, DBname:str) \
+    -> responseModel.databaseDesc:
+        return env.connectDB_failureCheck(
+            await self.connectDB(DBname)
+        )
+
+    async def connectCollection_do(self, collection:str) \
+    -> responseModel.collectionDesc:
+        return env.connectCollection_failureCheck(
+            await self.connectCollection(collection)
+        )
+
+    async def addDocument_do(self) \
+    -> responseModel.documentAddUsage:
+        documentAdd:responseModel.documentAddUsage  = \
+                responseModel.documentAddUsage()
+        if not (
+            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+        ).info.connected:
+            documentAdd.collection  = connectCol
+            return documentAdd
+        return env.addDocument_failureCheck(
+            await self.documentAdd(self.args.argument)
+        )
+
+
+        connectCol:responseModel.collectionDesc = \
+                await self.connectCollection_do(env.collectionName_get(self.args))
+        return env.connection_failureCheck(
+                    await self.connectCollection(collection)
+                )
+
     async def service(self) -> None:
         pudb.set_trace()
 
@@ -390,24 +509,24 @@ class Pfmongo:
             return
 
         match(self.args.do):
-            case 'showAllDB':
-                env.usage_failureCheck(
-                    await self.showAllDB()
-                )
-            case 'showAllCollections':
-                env.usage_failureCheck(
-                    await self.showAllCollections()
-                )
-            case 'connectDB':
-                env.connection_failureCheck(
-                    await self.connectDB(self.args.argument)
-                )
-            case 'connectCollection':
-                env.connection_failureCheck(
-                    await self.connectCollection(self.args.argument)
-                )
-            case 'addDocument':
-                env.connection_failureCheck(
-                    await self.connectCollection(self.args.collectionName)
-                )
-                await self.documentAdd(self.args.argument)
+            case 'showAllDB':           await self.showAllDB_do()
+            case 'showAllCollections':  await self.showAllCollections_do()
+            case 'connectDB':           await self.connectDB_do(self.args.argument)
+            case 'connectCollection':   await self.connectCollection_do(self.args.argument)
+            case 'addDocument':         await self.addDocument_do()
+#            case 'addDocument':
+#                connect:responseModel.collectionDesc|\
+#                        responseModel.databaseDesc   \
+#                = env.connection_failureCheck(
+#                    await self.connectCollection(self.args.collectionName)
+#                )
+#                if connect.info.connected:
+#                    await self.documentAdd(self.args.argument)
+#            case 'list':
+#                connect:responseModel.collectionDesc|\
+#                        responseModel.databaseDesc   \
+#                = env.connection_failureCheck(
+#                    await self.connectCollection(self.args.collectionName)
+#                )
+#                if connect.info.connected:
+#                    await self.documentList(self.args.argument)
