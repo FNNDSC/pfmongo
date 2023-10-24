@@ -76,8 +76,10 @@ class collectionNamesUsage(BaseModel):
     info:databaseConnectStatus      = databaseConnectStatus()
 
 class documentAddUsage(BaseModel):
+    status:bool                     = False
     otype:str                       = "adding document"
     documentName:str                = ""
     document:dict                   = {}
+    resp:dict                       = {}
     collection:collectionDesc       = collectionDesc()
 
