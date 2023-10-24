@@ -353,20 +353,22 @@ class Pfmongo:
 
     async def documentAdd(self, d_json:dict) \
     -> responseModel.documentAddUsage:
-#        await self.connectCollection(self.args.collectionName)
         documentAdd:responseModel.documentAddUsage = \
                 responseModel.documentAddUsage()
+        if not (
+            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+        ).info.connected:
+            documentAdd.collection  = connectCol
+            return documentAdd
+
         pudb.set_trace()
-        d_resp:dict         = await self.dbAPI.insert_one(
-                                intoCollection  = self.args.collectionName,
+        if not (documentAdd := await self.dbAPI.insert_one(
+                                connectCol,
                                 document        = d_json
                             )
-        self.responseData   = responseData_build(
-                                d_resp,
-                                'Document inserted successfully'\
-                                    if d_resp['status'] else    \
-                                'Document insert failure'
-                            )
+        ).status:
+            return documentAdd
+        self.responseData_log(documentAdd)
         return documentAdd
 
 #    def usage_message(
@@ -417,7 +419,7 @@ class Pfmongo:
         if not connectDB.info.connected:
             return connectCol
         connectCol:responseModel.collectionDesc = \
-                await self.dbAPI.collection_cnnect(collectionName)
+                await self.dbAPI.collection_connect(collectionName)
         connectCol.database = connectDB
         self.responseData   = self.responseData_log(connectCol)
         # pudb.set_trace()
@@ -484,23 +486,9 @@ class Pfmongo:
 
     async def addDocument_do(self) \
     -> responseModel.documentAddUsage:
-        documentAdd:responseModel.documentAddUsage  = \
-                responseModel.documentAddUsage()
-        if not (
-            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
-        ).info.connected:
-            documentAdd.collection  = connectCol
-            return documentAdd
         return env.addDocument_failureCheck(
             await self.documentAdd(self.args.argument)
         )
-
-
-        connectCol:responseModel.collectionDesc = \
-                await self.connectCollection_do(env.collectionName_get(self.args))
-        return env.connection_failureCheck(
-                    await self.connectCollection(collection)
-                )
 
     async def service(self) -> None:
         pudb.set_trace()
