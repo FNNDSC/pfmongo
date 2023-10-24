@@ -72,7 +72,7 @@ class mongoDB():
         }
         return d_ret
 
-    def insert_one_response(self, d_resp:dict) -> dict:
+    def insert_one_response(self, d_resp:dict) -> dict[bool, dict]:
         d_data:dict         = {
                 'status':   False,
                 'document': d_resp
@@ -81,28 +81,21 @@ class mongoDB():
             d_data['status'] = d_resp['acknowledged']
         return d_data
 
-    async def insert_one(self, **kwargs) -> dict[bool, dict]:
+    async def insert_one(self, collection:responseModel.collectionDesc, **kwargs) \
+    -> responseModel.documentAddUsage:
         pudb.set_trace()
+        insert:responseModel.documentAddUsage   = responseModel.documentAddUsage()
         d_document:dict     = {}
-        d_data:dict         = {
-                'status':   False,
-                'document': d_document
-        }
-        d_document          = {}
-        intoCollection:str  = ""
         for k, v in kwargs.items():
-            if k == 'intoCollection':   intoCollection  = v
-            if k == 'document':         d_document      = v
-        if not intoCollection:
-            return d_data
-        await self.collection_connect(intoCollection)
-        ld_collection:list = [d for d in self.ld_collection
-                                if d['name'] == intoCollection]
+            if k == 'document': d_document      = v
+        insert.document     = d_document
+        insert.collection   = collection
+        ld_collection:list  = [d for d in self.ld_collection
+                                if d['name'] == collection.name]
         for d in ld_collection:
-            d_data          = self.insert_one_response(
-                                await d['object'].document_add(d_document)
-                            )
-        return d_data
+            insert.resp     = await d['object'].document_add(d_document)
+            insert.status   = insert.resp.acknowledged
+        return insert
 
     def collection_serialize(self) -> responseModel.collectionDesc:
         resp:responseModel.collectionDesc   = responseModel.collectionDesc()
@@ -216,8 +209,9 @@ class mongoCollection():
     async def document_add(self, d_data:dict) -> dict:
         # pudb.set_trace()
         d_resp:dict         = {
-                'acknowledged': False,
-                'inserted_id':  "-1"
+                'acknowledged'  : False,
+                'inserted_id'   : "-1",
+                'error'         : ""
         }
         if self.addHashToDocument:
             d_data          = self.hash_addToDocument(d_data)
