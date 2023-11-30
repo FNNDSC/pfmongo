@@ -2,7 +2,7 @@ from    pathlib     import  Path
 from    argparse    import  Namespace
 from    typing      import  Optional
 from    pfmisc      import  Colors  as C
-from    pfmongo.commands.clop   import add, delete, search, showAll, connect, list
+from    pfmongo.commands.clop   import add, delete, search, showAll, connect, list, get
 import  click
 import  pudb
 
@@ -25,4 +25,5 @@ collection.add_command(search.search)
 collection.add_command(showAll.showAll)
 collection.add_command(connect.connect)
 collection.add_command(list.list)
+collection.add_command(get.get)
 
