@@ -40,6 +40,7 @@ class mongoDB():
             connected   = False
             error       = f'{e}'
         resp.info.connected = connected
+        resp.status         = connected
         resp.info.error     = error
         resp.databaseNames  = l_DBs
         return resp
@@ -82,9 +83,9 @@ class mongoDB():
         return d_data
 
     async def insert_one(self, collection:responseModel.collectionDesc, **kwargs) \
-    -> responseModel.documentAddUsage:
-        pudb.set_trace()
-        insert:responseModel.documentAddUsage   = responseModel.documentAddUsage()
+    -> responseModel.DocumentAddUsage:
+        # pudb.set_trace()
+        insert:responseModel.DocumentAddUsage   = responseModel.DocumentAddUsage()
         d_document:dict     = {}
         for k, v in kwargs.items():
             if k == 'document': d_document      = v
@@ -94,7 +95,7 @@ class mongoDB():
                                 if d['name'] == collection.name]
         for d in ld_collection:
             insert.resp     = await d['object'].document_add(d_document)
-            insert.status   = insert.resp.acknowledged
+            insert.status   = insert.resp['acknowledged']
         return insert
 
     def collection_serialize(self) -> responseModel.collectionDesc:
@@ -165,6 +166,8 @@ class mongoDB():
         resp.info.connected             = self.d_DBref['connected']
         resp.info.existsAlready         = self.d_DBref['existsAlready']
         resp.info.error                 = self.d_DBref['error']
+        resp.info.status                = resp.info.connected
+        resp.status                     = resp.info.status
         return resp
 
     async def connect(self, DBname:str) -> responseModel.databaseDesc:
@@ -218,11 +221,13 @@ class mongoCollection():
         if await self.is_duplicate(d_data) and self.noDuplicates:
            d_resp['error']  = 'Duplicate document hash found.'
         else:
-            resp:results.InsertOneResult = await self.collection.insert_one(d_data)
-            d_resp = {
-                'acknowledged': resp.acknowledged,
-                'inserted_id':  str(resp.inserted_id)
-            }
+            resp:results.InsertOneResult    = results.InsertOneResult(None, False)
+            try:
+                resp        = await self.collection.insert_one(d_data)
+            except Exception as e:
+                d_resp['error']     = '%s' % e
+            d_resp['acknowledged']  =  resp.acknowledged
+            d_resp['inserted_id']   = str(resp.inserted_id)
         return d_resp
 
     async def collectionNames_list(self, cursor: AIO.AsyncIOMotorCursor) -> list:
@@ -268,7 +273,6 @@ class mongoCollection():
         self.noDuplicates:bool              = DBobject.args.noDuplicates
         self.addHashToDocument              = DBobject.args.useHashes
 
-
     def collection_serialize(self) -> responseModel.collectionDesc:
         #pudb.set_trace()
         resp:responseModel.collectionDesc   = responseModel.collectionDesc()
@@ -279,6 +283,8 @@ class mongoCollection():
         resp.info.existsAlready             = self.d_collection['exists']
         resp.info.elements                  = self.d_collection['elements']
         resp.info.error                     = self.d_collection['error']
+        resp.info.status                    = resp.info.connected
+        resp.status                         = resp.info.status
         return resp
 
     async def connect(self, name:str) -> responseModel.collectionDesc:
