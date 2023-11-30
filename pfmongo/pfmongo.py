@@ -282,6 +282,54 @@ class Pfmongo:
         )
         return documentAdd
 
+    async def documentDelete(self, id:str) \
+    -> responseModel.DocumentDeleteUsage:
+        documentDelete:responseModel.DocumentDeleteUsage = \
+                responseModel.DocumentDeleteUsage()
+        if not (
+            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+        ).info.connected:
+            documentDelete.collection  = connectCol
+            return documentDelete
+        self.responseData_log(documentDelete := await self.dbAPI.delete_one(
+                                connectCol,
+                                document        = id
+                            )
+        )
+        return documentDelete
+
+    async def documentList(self, field:str) \
+    -> responseModel.DocumentListUsage:
+        documentList:responseModel.DocumentListUsage = \
+                responseModel.DocumentListUsage()
+        if not (
+            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+        ).info.connected:
+            documentList.collection  = connectCol
+            return documentList
+        self.responseData_log(documentList := await self.dbAPI.listDocs(
+                                connectCol,
+                                field = field
+                            )
+        )
+        return documentList
+
+    async def documentGet(self, id:str) \
+    -> responseModel.DocumentGetUsage:
+        documentGet:responseModel.DocumentGetUsage = \
+                responseModel.DocumentGetUsage()
+        if not (
+            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+        ).info.connected:
+            documentGet.collection  = connectCol
+            return documentGet
+        self.responseData_log(documentGet := await self.dbAPI.get_one(
+                                connectCol,
+                                document = id
+                            )
+        )
+        return documentGet
+
     async def connectDB(self, DBname:str) -> responseModel.databaseDesc:
         connect:responseModel.databaseDesc  = responseModel.databaseDesc()
         self.responseData_log((connect := await self.dbAPI.connect(DBname)))
@@ -360,6 +408,24 @@ class Pfmongo:
             await self.documentAdd(self.args.argument)
         )
 
+    async def deleteDocument_do(self) \
+    -> responseModel.DocumentDeleteUsage:
+        return env.deleteDocument_failureCheck(
+            await self.documentDelete(self.args.argument)
+        )
+
+    async def listDocument_do(self) \
+    -> responseModel.DocumentListUsage:
+        return env.listDocument_failureCheck(
+            await self.documentList(self.args.argument)
+        )
+
+    async def getDocument_do(self) \
+    -> responseModel.DocumentGetUsage:
+        return env.getDocument_failureCheck(
+            await self.documentGet(self.args.argument)
+        )
+
     async def service(self) -> None:
         pudb.set_trace()
 
@@ -372,3 +438,6 @@ class Pfmongo:
             case 'connectDB':           await self.connectDB_do(self.args.argument)
             case 'connectCollection':   await self.connectCollection_do(self.args.argument)
             case 'addDocument':         await self.addDocument_do()
+            case 'deleteDocument':      await self.deleteDocument_do()
+            case 'listDocument':        await self.listDocument_do()
+            case 'getDocument':         await self.getDocument_do()
