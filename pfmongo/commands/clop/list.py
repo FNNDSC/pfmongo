@@ -25,13 +25,13 @@ session state.
 @click.option('--field',
     type        = str,
     help        = \
-    "If specified, list only the named field",
-    default     = '')
+    "List the value of the named field",
+    default     = '_id')
 @click.pass_context
 def list(ctx:click.Context, field:str) -> int:
     pudb.set_trace()
     options:Namespace   = ctx.obj['options']
-    options.do          = 'list'
+    options.do          = 'listDocument'
     options.argument    = field
-    list:int            = driver.run(options)
-    return list
+    ls:int              = driver.run(options)
+    return ls

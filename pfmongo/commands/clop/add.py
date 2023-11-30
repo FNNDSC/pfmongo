@@ -55,13 +55,13 @@ session state.
     type  = str,
     help  = \
     "The name of a JSON formatted file to save to the collection in the database")
-@click.option('--setid',
+@click.option('--id',
     type  = str,
     help  = \
     "If specified, set the 'id' in the mongo collection to the passed string",
     default = '')
 @click.pass_context
-def add(ctx:click.Context, document:str, setid:str="") -> int:
+def add(ctx:click.Context, document:str, id:str="") -> int:
     # pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     options.do          = 'addDocument'
@@ -71,8 +71,8 @@ def add(ctx:click.Context, document:str, setid:str="") -> int:
         return 100
     if isinstance(d_dataOK, dict):
         d_data          = d_dataOK
-    if setid:
-        d_data['_id']   = setid
+    if id:
+        d_data['_id']   = id
     options.argument    = d_data
-    add:int = driver.run(options)
-    return add
+    save:int            = driver.run(options)
+    return save
