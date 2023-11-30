@@ -201,8 +201,9 @@ def usage_failureCheck(
     return usage
 
 def addDocument_failureCheck(
-        usage:responseModel.documentAddUsage
-) -> responseModel.documentAddUsage:
+        usage:responseModel.DocumentAddUsage
+) -> responseModel.DocumentAddUsage:
+    # pudb.set_trace()
     if not usage.collection.info.connected:
         complain(f'''
                 A document add usage error has occured. This typically means that
@@ -216,6 +217,18 @@ def addDocument_failureCheck(
                 ''',
                 5,
                 dataModel.messageType.ERROR)
+    if not usage.status:
+        complain(f'''
+                A document add usage error has occured. This typically means that
+                a duplicate 'id' has been specified. Please check the value of any
+
+                    {CY}--setid {GR}<value>{NC}
+
+                 in the {GR}add{NC} subcommand.
+                ''',
+                6,
+                dataModel.messageType.ERROR)
+
     return usage
 
 def env_statePathSet(options:Namespace) -> bool:
