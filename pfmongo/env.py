@@ -222,11 +222,106 @@ def addDocument_failureCheck(
                 A document add usage error has occured. This typically means that
                 a duplicate 'id' has been specified. Please check the value of any
 
-                    {CY}--setid {GR}<value>{NC}
+                    {CY}--id {GR}<value>{NC}
 
                  in the {GR}add{NC} subcommand.
                 ''',
                 6,
+                dataModel.messageType.ERROR)
+
+    return usage
+
+def deleteDocument_failureCheck(
+        usage:responseModel.DocumentDeleteUsage
+) -> responseModel.DocumentDeleteUsage:
+    # pudb.set_trace()
+    if not usage.collection.info.connected:
+        complain(f'''
+                A document add usage error has occured. This typically means that
+                the mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                5,
+                dataModel.messageType.ERROR)
+    if not usage.status:
+        complain(f'''
+                A document delete usage error has occured. This typically means that
+                a duplicate 'id' has been specified. Please check the value of any
+
+                    {CY}--id {GR}<value>{NC}
+
+                 in the {GR}delete{NC} subcommand.
+                ''',
+                6,
+                dataModel.messageType.ERROR)
+
+    return usage
+
+def listDocument_failureCheck(
+        usage:responseModel.DocumentListUsage
+) -> responseModel.DocumentListUsage:
+    # pudb.set_trace()
+    if not usage.collection.info.connected:
+        complain(f'''
+                A document add usage error has occured. This typically means that
+                the mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                7,
+                dataModel.messageType.ERROR)
+    if not usage.status:
+        complain(f'''
+                A document list usage error has occured. This typically means that
+                a non existant search query field has been specified. Please check
+                the value of any
+
+                    {CY}--field {GR}<value>{NC}
+
+                 in the {GR}list{NC} subcommand.
+                ''',
+                8,
+                dataModel.messageType.ERROR)
+
+    return usage
+
+def getDocument_failureCheck(
+        usage:responseModel.DocumentGetUsage
+) -> responseModel.DocumentGetUsage:
+    # pudb.set_trace()
+    if not usage.collection.info.connected:
+        complain(f'''
+                A document add usage error has occured. This typically means that
+                the mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                7,
+                dataModel.messageType.ERROR)
+    if not usage.status:
+        complain(f'''
+                A document list get error has occured. This typically means that
+                no document in the collection had a matching id term. Please check
+                the value of any
+
+                    {CY}--id {GR}<value>{NC}
+
+                 in the {GR}get{NC} subcommand.
+                ''',
+                8,
                 dataModel.messageType.ERROR)
 
     return usage
