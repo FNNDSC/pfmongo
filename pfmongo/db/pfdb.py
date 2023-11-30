@@ -1,5 +1,5 @@
 from    argparse            import Namespace
-from    typing              import Any, List, TypedDict
+from    typing              import Any, List, TypedDict, Mapping, Optional
 from    pydantic            import BaseModel, Field
 
 import  json
@@ -20,6 +20,7 @@ from    pfmongo.config      import settings
 from    pfmongo.models      import responseModel
 
 from    motor               import motor_asyncio as AIO
+from    motor.core          import AgnosticCursor
 
 import  hashlib
 import  copy
@@ -97,6 +98,57 @@ class mongoDB():
             insert.resp     = await d['object'].document_add(d_document)
             insert.status   = insert.resp['acknowledged']
         return insert
+
+    async def delete_one(self, collection:responseModel.collectionDesc, **kwargs) \
+    -> responseModel.DocumentDeleteUsage:
+        delete:responseModel.DocumentDeleteUsage   = responseModel.DocumentDeleteUsage()
+        id:str  = ""
+        for k, v in kwargs.items():
+            if k == 'document': id = v
+        delete.documentName = id
+        delete.collection   = collection
+        ld_collection:list  = [d for d in self.ld_collection
+                                if d['name'] == collection.name]
+        for d in ld_collection:
+            delete.resp     = await d['object'].document_delete(id)
+            delete.status   = delete.resp['acknowledged']
+        return delete
+
+    async def get_one(self, collection:responseModel.collectionDesc, **kwargs) \
+    -> responseModel.DocumentGetUsage:
+        get:responseModel.DocumentGetUsage   = responseModel.DocumentGetUsage()
+        id:str  = ""
+        for k, v in kwargs.items():
+            if k == 'document': id = v
+        get.documentName    = id
+        get.collection      = collection
+        ld_collection:list  = [d for d in self.ld_collection
+                                if d['name'] == collection.name]
+        for d in ld_collection:
+            get.resp     = await d['object'].document_get(id)
+            get.status   = get.resp['acknowledged']
+        if get.status:
+            get.document = get.resp['document']
+            get.resp['document'] = 'Read successfully'
+        return get
+
+    async def listDocs(self, collection:responseModel.collectionDesc, **kwargs) \
+    -> responseModel.DocumentListUsage:
+        docs:responseModel.DocumentListUsage   = responseModel.DocumentListUsage()
+        field:str  = ""
+        for k, v in kwargs.items():
+            if k == 'field': field = v
+        docs.documentField  = field
+        docs.collection     = collection
+        ld_collection:list  = [d for d in self.ld_collection
+                                if d['name'] == collection.name]
+        for d in ld_collection:
+            docs.resp       = await d['object'].document_list(field)
+            docs.status     = docs.resp['acknowledged']
+        if docs.status:
+            docs.documentList = docs.resp['find_list']
+            docs.resp['find_list']  = 'Listed successfully'
+        return docs
 
     def collection_serialize(self) -> responseModel.collectionDesc:
         resp:responseModel.collectionDesc   = responseModel.collectionDesc()
@@ -228,6 +280,53 @@ class mongoCollection():
                 d_resp['error']     = '%s' % e
             d_resp['acknowledged']  =  resp.acknowledged
             d_resp['inserted_id']   = str(resp.inserted_id)
+        return d_resp
+
+    async def document_delete(self, id:str) -> dict:
+        # pudb.set_trace()
+        d_resp:dict         = {
+                'acknowledged'  : False,
+                'deleted_count' : "-1",
+                'error'         : ""
+        }
+        query:dict  = {'_id': id}
+        raw_result:Mapping[str, int] = {'n': 1}
+        resp:results.DeleteResult   = results.DeleteResult(raw_result, False)
+        try:
+            resp:results.DeleteResult = await self.collection.delete_one(query)
+        except Exception as e:
+            d_resp['error']     = '%s' % e
+        d_resp['acknowledged']  =  resp.acknowledged
+        d_resp['deleted_count'] = str(resp.deleted_count)
+        return d_resp
+
+    async def document_get(self, id:str) -> dict:
+        # pudb.set_trace()
+        d_resp:dict         = {
+                'acknowledged'  : False,
+                'document'      : {},
+                'error'         : ""
+        }
+        query:dict  = {'_id': id}
+        document:Optional[dict[str, Any]]     = await self.collection.find_one(query)
+        if document:
+            d_resp['acknowledged']  = True
+            d_resp['document']      = document
+        return d_resp
+
+    async def document_list(self, field:str) -> dict:
+        # pudb.set_trace()
+        d_resp:dict         = {
+                'acknowledged'  : False,
+                'find_list'     : [],
+                'error'         : ""
+        }
+        query:dict  = {field: 1}
+        cursor:AgnosticCursor   = self.collection.find({}, query)
+        async for doc in cursor:
+            d_resp['find_list'].append(doc[field])
+        if len(d_resp['find_list']):
+            d_resp['acknowledged']  = True
         return d_resp
 
     async def collectionNames_list(self, cursor: AIO.AsyncIOMotorCursor) -> list:
