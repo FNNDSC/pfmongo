@@ -26,11 +26,13 @@ class mongodbResponse(BaseModel):
 # Connection status returns
 
 class databaseConnectStatus(BaseModel):
+    status:bool                     = False
     connected:bool                  = False
     existsAlready:bool              = False
     error:str                       = ""
 
 class collectionConnectStatus(BaseModel):
+    status:bool                     = False
     connected:bool                  = False
     existsAlready:bool              = False
     elements:int                    = 0
@@ -39,6 +41,7 @@ class collectionConnectStatus(BaseModel):
 # API connection returns
 
 class databaseDesc(BaseModel):
+    status:bool                     = False
     otype:str                       = "database"
     host:str                        = ""
     port:int                        = -1
@@ -46,6 +49,7 @@ class databaseDesc(BaseModel):
     info:databaseConnectStatus      = databaseConnectStatus()
 
 class collectionDesc(BaseModel):
+    status:bool                     = False
     database:databaseDesc           = databaseDesc()
     otype:str                       = "collection"
     databaseName:str                = ""
@@ -56,30 +60,33 @@ class collectionDesc(BaseModel):
 # API usage returns
 
 class showAllDBusage(BaseModel):
+    status:bool                     = False
     otype:str                       = "accessing database names"
     databaseNames:list              = []
     info:databaseConnectStatus      = databaseConnectStatus()
 
 class showAllcollectionsUsage(BaseModel):
+    status:bool                     = False
     otype:str                       = "accessing collection names"
     collectionNames:list            = []
     info:databaseConnectStatus      = databaseConnectStatus()
 
 class databaseNamesUsage(BaseModel):
+    status:bool                     = False
     otype:str                       = "accessing database names"
     databaseNames:list              = []
     info:databaseConnectStatus      = databaseConnectStatus()
 
 class collectionNamesUsage(BaseModel):
+    status:bool                     = False
     otype:str                       = "accessing collection names"
     collectionNames:list            = []
     info:databaseConnectStatus      = databaseConnectStatus()
 
-class documentAddUsage(BaseModel):
+class DocumentAddUsage(BaseModel):
     status:bool                     = False
     otype:str                       = "adding document"
     documentName:str                = ""
     document:dict                   = {}
     resp:dict                       = {}
     collection:collectionDesc       = collectionDesc()
-
