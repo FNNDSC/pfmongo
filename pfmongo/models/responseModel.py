@@ -84,8 +84,36 @@ class collectionNamesUsage(BaseModel):
     info:databaseConnectStatus      = databaseConnectStatus()
 
 class DocumentAddUsage(BaseModel):
+    """ response for adding a document to a collection """
     status:bool                     = False
     otype:str                       = "adding document"
+    documentName:str                = ""
+    document:dict                   = {}
+    resp:dict                       = {}
+    collection:collectionDesc       = collectionDesc()
+
+class DocumentDeleteUsage(BaseModel):
+    """ response for deleting a document from a collection """
+    status:bool                     = False
+    otype:str                       = "deleting document"
+    documentName:str                = ""
+    document:dict                   = {}
+    resp:dict                       = {}
+    collection:collectionDesc       = collectionDesc()
+
+class DocumentListUsage(BaseModel):
+    """ response for listing all documents from a collection """
+    status:bool                     = False
+    otype:str                       = "listing all documents"
+    documentField:str               = ""
+    documentList:list               = []
+    resp:dict                       = {}
+    collection:collectionDesc       = collectionDesc()
+
+class DocumentGetUsage(BaseModel):
+    """ response for getting adding a document from a collection """
+    status:bool                     = False
+    otype:str                       = "getting document"
     documentName:str                = ""
     document:dict                   = {}
     resp:dict                       = {}
