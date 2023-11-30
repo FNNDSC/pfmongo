@@ -62,7 +62,7 @@ session state.
     default = '')
 @click.pass_context
 def add(ctx:click.Context, document:str, setid:str="") -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     options.do          = 'addDocument'
     d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(document))
