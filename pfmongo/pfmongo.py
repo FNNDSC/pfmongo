@@ -314,6 +314,23 @@ class Pfmongo:
         )
         return documentList
 
+    async def documentSearch(self, searchFor:list, field:str) \
+    -> responseModel.DocumentSearchUsage:
+        documentList:responseModel.DocumentSearchUsage = \
+                responseModel.DocumentSearchUsage()
+        if not (
+            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+        ).info.connected:
+            documentList.collection  = connectCol
+            return documentList
+        self.responseData_log(documentList := await self.dbAPI.searchDocs(
+                                connectCol,
+                                searchFor   = searchFor,
+                                field       = field
+                            )
+        )
+        return documentList
+
     async def documentGet(self, id:str) \
     -> responseModel.DocumentGetUsage:
         documentGet:responseModel.DocumentGetUsage = \
@@ -402,28 +419,34 @@ class Pfmongo:
             await self.connectCollection(collection)
         )
 
-    async def addDocument_do(self) \
+    async def addDocument_do(self, document:dict) \
     -> responseModel.DocumentAddUsage:
         return env.addDocument_failureCheck(
-            await self.documentAdd(self.args.argument)
+            await self.documentAdd(document)
         )
 
-    async def deleteDocument_do(self) \
+    async def deleteDocument_do(self, id:str) \
     -> responseModel.DocumentDeleteUsage:
         return env.deleteDocument_failureCheck(
-            await self.documentDelete(self.args.argument)
+            await self.documentDelete(id)
         )
 
-    async def listDocument_do(self) \
+    async def listDocument_do(self, field:str) \
     -> responseModel.DocumentListUsage:
         return env.listDocument_failureCheck(
-            await self.documentList(self.args.argument)
+            await self.documentList(field)
         )
 
-    async def getDocument_do(self) \
+    async def getDocument_do(self, id:str) \
     -> responseModel.DocumentGetUsage:
         return env.getDocument_failureCheck(
-            await self.documentGet(self.args.argument)
+            await self.documentGet(id)
+        )
+
+    async def searchDocument_do(self, search:dict) \
+    -> responseModel.DocumentSearchUsage:
+        return env.searchDocument_failureCheck(
+            await self.documentSearch(search['searchFor'].split(','), search['field'])
         )
 
     async def service(self) -> None:
@@ -437,7 +460,8 @@ class Pfmongo:
             case 'showAllCollections':  await self.showAllCollections_do()
             case 'connectDB':           await self.connectDB_do(self.args.argument)
             case 'connectCollection':   await self.connectCollection_do(self.args.argument)
-            case 'addDocument':         await self.addDocument_do()
-            case 'deleteDocument':      await self.deleteDocument_do()
-            case 'listDocument':        await self.listDocument_do()
-            case 'getDocument':         await self.getDocument_do()
+            case 'addDocument':         await self.addDocument_do(self.args.argument)
+            case 'deleteDocument':      await self.deleteDocument_do(self.args.argument)
+            case 'listDocument':        await self.listDocument_do(self.args.argument)
+            case 'getDocument':         await self.getDocument_do(self.args.argument)
+            case 'searchDocument':      await self.searchDocument_do(self.args.argument)
