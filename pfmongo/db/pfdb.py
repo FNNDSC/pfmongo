@@ -150,6 +150,26 @@ class mongoDB():
             docs.resp['find_list']  = 'Listed successfully'
         return docs
 
+    async def searchDocs(self, collection:responseModel.collectionDesc, **kwargs) \
+    -> responseModel.DocumentSearchUsage:
+        docs:responseModel.DocumentSearchUsage  = responseModel.DocumentSearchUsage()
+        field:str       = ""
+        searchFor:list  = []
+        for k, v in kwargs.items():
+            if k == 'searchFor':    searchFor   = v
+            if k == 'field':        field       = v
+        docs.documentField  = field
+        docs.collection     = collection
+        ld_collection:list  = [d for d in self.ld_collection
+                                if d['name'] == collection.name]
+        for d in ld_collection:
+            docs.resp       = await d['object'].document_search(searchFor, field)
+            docs.status     = docs.resp['acknowledged']
+        if docs.status:
+            docs.documentList = docs.resp['find_list']
+            docs.resp['find_list']  = 'Listed successfully'
+        return docs
+
     def collection_serialize(self) -> responseModel.collectionDesc:
         resp:responseModel.collectionDesc   = responseModel.collectionDesc()
         return resp
@@ -323,6 +343,21 @@ class mongoCollection():
         }
         query:dict  = {field: 1}
         cursor:AgnosticCursor   = self.collection.find({}, query)
+        async for doc in cursor:
+            d_resp['find_list'].append(doc[field])
+        if len(d_resp['find_list']):
+            d_resp['acknowledged']  = True
+        return d_resp
+
+    async def document_search(self, searchFor:list, field:str) -> dict:
+        # pudb.set_trace()
+        d_resp:dict         = {
+                'acknowledged'  : False,
+                'find_list'     : [],
+                'error'         : ""
+        }
+        query:dict  = {"$and": [{"field": {"$in": searchFor}} for field in searchFor]}
+        cursor:AgnosticCursor   = self.collection.find(query, {field: 1})
         async for doc in cursor:
             d_resp['find_list'].append(doc[field])
         if len(d_resp['find_list']):
