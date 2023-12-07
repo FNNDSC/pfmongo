@@ -326,6 +326,38 @@ def getDocument_failureCheck(
 
     return usage
 
+def searchDocument_failureCheck(
+        usage:responseModel.DocumentSearchUsage
+) -> responseModel.DocumentSearchUsage:
+    # pudb.set_trace()
+    if not usage.collection.info.connected:
+        complain(f'''
+                A document add usage error has occured. This typically means that
+                the mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                7,
+                dataModel.messageType.ERROR)
+    if not usage.status:
+        complain(f'''
+                A document search usage error has occured. This typically means that
+                a non existant search query field has been specified. Please check
+                the value of any
+
+                    {CY}--field {GR}<value>{NC}
+
+                 in the {GR}search{NC} subcommand.
+                ''',
+                8,
+                dataModel.messageType.ERROR)
+
+    return usage
+
 def env_statePathSet(options:Namespace) -> bool:
     """
     Check/set a path to contain state/persistent data, typically the
