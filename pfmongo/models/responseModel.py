@@ -110,6 +110,10 @@ class DocumentListUsage(BaseModel):
     resp:dict                       = {}
     collection:collectionDesc       = collectionDesc()
 
+class DocumentSearchUsage(DocumentListUsage):
+    """ response for listing all documents from a collection """
+    otype:str                       = "searching all documents"
+
 class DocumentGetUsage(BaseModel):
     """ response for getting adding a document from a collection """
     status:bool                     = False
@@ -118,3 +122,4 @@ class DocumentGetUsage(BaseModel):
     document:dict                   = {}
     resp:dict                       = {}
     collection:collectionDesc       = collectionDesc()
+
