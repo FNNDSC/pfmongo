@@ -20,24 +20,24 @@ comma separated list.
 
 The "hits" are returned referenced by the passed "field".
 """)
-@click.option('--for',
+@click.option('--target',
     type        = str,
     help        = \
     "A comma separated list. The logical AND of the search is returned",
-    default     = '_id')
+    default     = '')
 @click.option('--field',
     type        = str,
     help        = \
     "List the search hits referenced by this field",
     default     = '_id')
 @click.pass_context
-def list(ctx:click.Context, searchFor:str, field:str) -> int:
+def search(ctx:click.Context, target:str, field:str) -> int:
     pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     options.do          = 'searchDocument'
     options.argument    = {
             "field":        field,
-            "searchFor":    searchFor.split(',')
+            "searchFor":    target.split(',')
     }
     hits:int              = driver.run(options)
     return hits

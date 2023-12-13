@@ -13,6 +13,23 @@ CY  = C.CYAN
 
 from pfmongo.models.dataModel import messageType
 
+def flatten_dict(data:dict, parent_key:str='', sep:str='_') -> dict:
+    flattened:dict = {}
+    for k, v in data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            flattened.update(flatten_dict(v, new_key, sep=sep))
+        elif isinstance(v, list):
+            for i, item in enumerate(v):
+                list_key = f"{new_key}{sep}{i}"
+                if isinstance(item, (dict, list)):
+                    flattened.update(flatten_dict({str(i): item}, parent_key=list_key, sep=sep))
+                else:
+                    flattened[list_key] = item
+        else:
+            flattened[new_key] = v
+    return flattened
+
 def env_OK(options:Namespace, d_doc:dict) -> bool|dict:
     envFailure:int    = env.env_failCheck(options)
     if envFailure: return False

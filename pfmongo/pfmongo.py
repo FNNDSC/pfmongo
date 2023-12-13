@@ -446,7 +446,7 @@ class Pfmongo:
     async def searchDocument_do(self, search:dict) \
     -> responseModel.DocumentSearchUsage:
         return env.searchDocument_failureCheck(
-            await self.documentSearch(search['searchFor'].split(','), search['field'])
+            await self.documentSearch(search['searchFor'], search['field'])
         )
 
     async def service(self) -> None:

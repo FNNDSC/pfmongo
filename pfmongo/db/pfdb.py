@@ -356,10 +356,29 @@ class mongoCollection():
                 'find_list'     : [],
                 'error'         : ""
         }
-        query:dict  = {"$and": [{"field": {"$in": searchFor}} for field in searchFor]}
-        cursor:AgnosticCursor   = self.collection.find(query, {field: 1})
-        async for doc in cursor:
-            d_resp['find_list'].append(doc[field])
+        pudb.set_trace()
+        # Construct the query dynamically using $where
+        search_criteria = {
+        "$and": [
+            {"data": {"$elemMatch": {"$or": [{"$regex": f".*{search_value}.*", "$options": "i"} for search_value in searchFor]}}}
+        ],
+        }
+
+        # # Construct the query dynamically using $where
+        # search_criteria = {
+        #     "$and": [
+        #         {"$where": f"/{search_value}/i.test(this)"} for search_value in searchFor
+        #     ],
+        #     "protocol": {"$regex": "MPRAGE", "$options": "i"},
+        #     "description": {"$regex": "T1", "$options": "i"}
+        # }
+        # Find documents matching the criteria
+
+        cursor = self.collection.find(search_criteria, projection={"_id": 1})
+
+        # Fetch the document _ids
+        d_resp['find_list'] = [document["_id"] async for document in cursor]
+
         if len(d_resp['find_list']):
             d_resp['acknowledged']  = True
         return d_resp
