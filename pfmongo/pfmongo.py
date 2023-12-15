@@ -90,8 +90,15 @@ package_coreDescription:str = f'''
 '''
 
 package_CLIself = '''
-        --useDB <DBname>                                                        \\
-        --useCollection <collectionName>                                        \\
+        [--useDB <DBname>]                                                      \\
+        [--useCollection <collectionName>]                                      \\
+        [--noHashing]                                                           \\
+        [--noDuplicates]                                                        \\
+        [--donotFlatten]                                                        \\
+        [--noResponseTruncSize]                                                 \\
+        [--responseTruncDepth <depth>]                                          \\
+        [--responseTruncSize <size>]                                            \\
+        [--donotFlatten]                                                        \\
         [--man]                                                                 \\
         [--version]'''
 
@@ -101,6 +108,39 @@ package_argSynopsisSelf = f"""
 
         {YL}[--useCollection <collectionName>]{NC}
         Use the collection called <collectionName>.
+
+        {YL}[--noHashing>]{NC}
+        If set, do not added payload hashes to documents. By default a hash of
+        the document is calculated and added as a field when saved to a
+        collection. This hash serves as a "fingerprint" of the document
+        assuring uniqueness.
+
+        {YL}[--noDuplicates]{NC}
+        If set, and in combination with --noHashing, will not allow a new
+        document with the same hash as an existing one to be saved to a
+        collection.
+
+        {YL}[--donotFlatten]{NC}
+        If set, do not add a flattened document to a shadow collection. Since
+        the interal structure of a document can be complex with nested data
+        structures, a "flattened" version of the document is added to a
+        "shadow" collection. This flattened version is consulted for quick
+        value searching. In other words, flattened documents are internal
+        artifacts and a side-effect of adding data to the collection. By
+        passing this flag, a flattened version is not created or saved. Note
+        that not flattening will severely limit searches!
+
+        {YL}[--noResponseSizeTrunc]{NC}
+        If set, do not truncate response returns from pfmongo calls. Note that
+        some responses can be "wordy", so only use if strictly needed.
+
+        {YL}[--responseTruncSize <size>]{NC}
+        Set the size limit on a given (nested) set of data in the response from
+        the app. You probably won'y need this.
+
+        {YL}[--responseTruncDepth <depth>]{NC}
+        Set the depth within a response below which to possibly truncatate on
+        response size. You probably won't need this.
 
         {YL}[--man]{NC}
         If specified, print this help/man page.
@@ -126,9 +166,9 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
         dest    = 'mongodbinit',
         default = '')
 
-    parserSelf.add_argument("--useHashes",
-        help    = "add hashes to inserted documents",
-        dest    = 'useHashes',
+    parserSelf.add_argument("--noHashing",
+        help    = "do not add hashes to inserted documents",
+        dest    = 'noHashing',
         default = False,
         action  = 'store_true')
 
@@ -137,6 +177,28 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
         dest    = 'noDuplicates',
         default = False,
         action  = 'store_true')
+
+    parserSelf.add_argument("--donotFlatten",
+        help    = "do not add shadow 'flattened' collection",
+        dest    = 'donotFlatten',
+        default = False,
+        action  = 'store_true')
+
+    parserSelf.add_argument("--noResponseTruncSize",
+        help    = "do not truncate responses, even if nested and high data",
+        dest    = 'noResponseTruncSize',
+        default = False,
+        action  = 'store_true')
+
+    parserSelf.add_argument("--responseTruncSize",
+        help    = "set the cumulative truncation size limit",
+        dest    = 'responseTruncSize',
+        default = '')
+
+    parserSelf.add_argument("--responseTruncDepth",
+        help    = "set the nested depth at which to consider truncation",
+        dest    = 'responseTruncDepth',
+        default = '')
 
     parserSelf.add_argument("--version",
         help    = "print name and version",
@@ -217,6 +279,16 @@ class Pfmongo:
 
     """
 
+    def setup_fromCLI(self) -> None:
+        settings.appsettings.noDuplicates           = self.args.noDuplicates
+        settings.appsettings.noHashing              = self.args.noHashing
+        settings.appsettings.donotFlatten           = self.args.donotFlatten
+        settings.appsettings.noResponseTruncSize    = self.args.noResponseTruncSize
+        if self.args.responseTruncSize:
+            settings.mongosettings.responseTruncSize= self.args.responseTruncSize
+        if self.args.responseTruncDepth:
+            settings.mongosettings.responseTruncDepth=self.args.responseTruncDepth
+
     def  __init__(self, args, **kwargs) -> None:
         self.args:Namespace             = Namespace()
         if type(args) is dict:
@@ -234,6 +306,7 @@ class Pfmongo:
         self.responseData:responseModel.mongodbResponse = \
                 responseModel.mongodbResponse()
         self.exitCode:int               = 1
+        self.setup_fromCLI()
 
     def responseData_log(
             self,
@@ -318,8 +391,11 @@ class Pfmongo:
     -> responseModel.DocumentSearchUsage:
         documentList:responseModel.DocumentSearchUsage = \
                 responseModel.DocumentSearchUsage()
+        collection:str  = env.collectionName_get(self.args)
+        if not settings.appsettings.donotFlatten:
+            collection += settings.mongosettings.flattenSuffix
         if not (
-            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+            connectCol := await self.connectCollection_do(collection)
         ).info.connected:
             documentList.collection  = connectCol
             return documentList
