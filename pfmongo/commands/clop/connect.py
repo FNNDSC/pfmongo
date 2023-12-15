@@ -23,9 +23,9 @@ contains several "collections".
 @click.argument('collection',
                 required = True)
 @click.pass_context
-def connect(ctx:click.Context, collection:str) -> None:
+def connect(ctx:click.Context, collection:str) -> int:
     # pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     options.do          = 'connectCollection'
     options.argument    = collection
-    connect:int         = driver.run(options)
+    return driver.run(options)
