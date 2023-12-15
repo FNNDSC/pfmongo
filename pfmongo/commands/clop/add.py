@@ -1,11 +1,13 @@
 import  click
 import  pudb
+from pudb.settings import save_config
 from    pfmongo         import  driver
 from    argparse        import  Namespace
 from    pfmongo         import  env
 import  json
 from    typing          import  Union
 from    pfmisc          import  Colors as C
+from    pfmongo.config  import  settings
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -13,7 +15,7 @@ CY  = C.CYAN
 
 from pfmongo.models.dataModel import messageType
 
-def flatten_dict(data:dict, parent_key:str='', sep:str='_') -> dict:
+def flatten_dict(data:dict, parent_key:str='', sep:str='/') -> dict:
     flattened:dict = {}
     for k, v in data.items():
         new_key = f"{parent_key}{sep}{k}" if parent_key else k
@@ -56,6 +58,43 @@ def jsonFile_intoDictRead(filename:str) -> dict[bool,dict]:
         d_json['data']      = str(e)
     return d_json
 
+def upload(d_data:dict, options:Namespace, id:str="") -> int:
+    if id:
+        d_data['_id']   = id
+    options.do          = 'addDocument'
+    options.argument    = d_data
+    do:int              = driver.run(options)
+    return do
+
+def currentCollection_getName(options:Namespace) -> str:
+    return env.collectionName_get(options)
+
+def shadowCollection_getName(options:Namespace) -> str:
+    sourceCol:str       = env.collectionName_get(options)
+    shadowSuffix:str    = settings.mongosettings.flattenSuffix
+    shadowCol:str       = sourceCol + shadowSuffix
+    return shadowCol
+
+def collection_connect(collection:str, options:Namespace) -> int:
+    options.do          = 'connectCollection'
+    options.argument    = collection
+    return driver.run(options)
+
+def add_do(document:dict, options:Namespace, id:str) -> int:
+    save:int            = upload(document, options, id)
+    if settings.appsettings.donotFlatten:
+        return save
+    pudb.set_trace()
+    thisCollection:str  = currentCollection_getName(options)
+    # connect:int         = collection_connect(
+    #                         shadowCollection_getName(options),
+    #                         options)
+    pudb.set_trace()
+    options.collectionName  = shadowCollection_getName(options)
+    save                = upload(flatten_dict(document), options, id)
+    options.collectionName  = thisCollection
+    connect             = collection_connect(thisCollection, options)
+    return save
 
 @click.command(help=f"""
 {C.CYAN}add{NC} a document (read from the filesystem) to a collection
@@ -79,17 +118,13 @@ session state.
     default = '')
 @click.pass_context
 def add(ctx:click.Context, document:str, id:str="") -> int:
-    # pudb.set_trace()
+    pudb.set_trace()
     options:Namespace   = ctx.obj['options']
-    options.do          = 'addDocument'
     d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(document))
     d_data:dict         = {}
     if not d_dataOK:
         return 100
     if isinstance(d_dataOK, dict):
         d_data          = d_dataOK
-    if id:
-        d_data['_id']   = id
-    options.argument    = d_data
-    save:int            = driver.run(options)
+    save:int            = add_do(d_data, options, id)
     return save
