@@ -18,12 +18,14 @@ from    pymongo             import results
 
 from    pfmongo.config      import settings
 from    pfmongo.models      import responseModel
+from    pfmongo             import env
 
 from    motor               import motor_asyncio as AIO
 from    motor.core          import AgnosticCursor
 
 import  hashlib
 import  copy
+import  re
 
 class mongoDB():
 
@@ -286,6 +288,8 @@ class mongoCollection():
         d_resp:dict         = {
                 'acknowledged'  : False,
                 'inserted_id'   : "-1",
+                'database'      : "",
+                'collection'    : "",
                 'error'         : ""
         }
         if self.addHashToDocument:
@@ -300,6 +304,8 @@ class mongoCollection():
                 d_resp['error']     = '%s' % e
             d_resp['acknowledged']  =  resp.acknowledged
             d_resp['inserted_id']   = str(resp.inserted_id)
+            d_resp['database']      = self.DB.name
+            d_resp['collection']    = self.collection.name
         return d_resp
 
     async def document_delete(self, id:str) -> dict:
@@ -307,6 +313,8 @@ class mongoCollection():
         d_resp:dict         = {
                 'acknowledged'  : False,
                 'deleted_count' : "-1",
+                'database'      : "",
+                'collection'    : "",
                 'error'         : ""
         }
         query:dict  = {'_id': id}
@@ -318,6 +326,8 @@ class mongoCollection():
             d_resp['error']     = '%s' % e
         d_resp['acknowledged']  =  resp.acknowledged
         d_resp['deleted_count'] = str(resp.deleted_count)
+        d_resp['database']      = self.DB.name
+        d_resp['collection']    = self.collection.name
         return d_resp
 
     async def document_get(self, id:str) -> dict:
@@ -325,6 +335,8 @@ class mongoCollection():
         d_resp:dict         = {
                 'acknowledged'  : False,
                 'document'      : {},
+                'database'      : "",
+                'collection'    : "",
                 'error'         : ""
         }
         query:dict  = {'_id': id}
@@ -332,6 +344,8 @@ class mongoCollection():
         if document:
             d_resp['acknowledged']  = True
             d_resp['document']      = document
+            d_resp['database']      = self.DB.name
+            d_resp['collection']    = self.collection.name
         return d_resp
 
     async def document_list(self, field:str) -> dict:
@@ -349,7 +363,11 @@ class mongoCollection():
             d_resp['acknowledged']  = True
         return d_resp
 
-    async def document_search(self, searchFor:list, field:str) -> dict:
+    async def create_text_index(self):
+        """Create a text index on all fields in the collection."""
+        await self.collection.create_index([("$**", "text")])
+
+    async def document_search(self, search_terms:list, field:str) -> dict:
         # pudb.set_trace()
         d_resp:dict         = {
                 'acknowledged'  : False,
@@ -357,27 +375,34 @@ class mongoCollection():
                 'error'         : ""
         }
         pudb.set_trace()
+        await self.create_text_index()
+
+        regex = "|".join(search_terms)  # Create a regex pattern that matches any of the search terms
+        documents = []
+        async for doc in self.collection.find({}):
+            for key, value in doc.items():
+                if re.search(regex, str(value), re.IGNORECASE):
+                    d_resp['find_list'].append(doc['_id'])
+
+        # regex = "|".join(searchFor)  # Create a regex pattern that matches any of the search terms
+        # query = { "$and": [ { "$or": [ { k: { "$regex": re.compile(regex, re.IGNORECASE) } } for k in doc.keys() ] } for doc in await self.collection.find({}).to_list(None) ] }
+
+        # cursor = self.collection.find(query)
+
+        # query = { "$and": [ { "$text": { "$search": term } } for term in searchFor ] }
+        # cursor = self.collection.find(query)
+
+        # documents = await cursor.to_list()
+        # return [Document(_id=doc['_id']) for doc in documents]
+
+
         # Construct the query dynamically using $where
-        search_criteria = {
-        "$and": [
-            {"data": {"$elemMatch": {"$or": [{"$regex": f".*{search_value}.*", "$options": "i"} for search_value in searchFor]}}}
-        ],
-        }
 
-        # # Construct the query dynamically using $where
-        # search_criteria = {
-        #     "$and": [
-        #         {"$where": f"/{search_value}/i.test(this)"} for search_value in searchFor
-        #     ],
-        #     "protocol": {"$regex": "MPRAGE", "$options": "i"},
-        #     "description": {"$regex": "T1", "$options": "i"}
-        # }
-        # Find documents matching the criteria
-
-        cursor = self.collection.find(search_criteria, projection={"_id": 1})
+        # cursor = self.collection.find(query, projection={"_id": 1})
 
         # Fetch the document _ids
-        d_resp['find_list'] = [document["_id"] async for document in cursor]
+        # dt = [d async for d in cursor]
+        # d_resp['find_list'] = [document["_id"] async for document in cursor]
 
         if len(d_resp['find_list']):
             d_resp['acknowledged']  = True
@@ -424,7 +449,8 @@ class mongoCollection():
         self.DB:AIO.AsyncIOMotorDatabase    = DBobject.getDB()
         self.d_collection:dict              = {}
         self.noDuplicates:bool              = DBobject.args.noDuplicates
-        self.addHashToDocument              = DBobject.args.useHashes
+        self.addHashToDocument              = not DBobject.args.noHashing
+        self.donotFlatten                   = DBobject.args.donotFlatten
 
     def collection_serialize(self) -> responseModel.collectionDesc:
         #pudb.set_trace()
