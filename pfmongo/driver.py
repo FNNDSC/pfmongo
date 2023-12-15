@@ -2,11 +2,16 @@ import  pudb
 from    typing                      import Callable, Optional
 from    pfmongo                     import pfmongo
 from    pfmongo.pfmongo             import Pfmongo  as MONGO
+from    pfmongo.config              import settings
 from    argparse                    import Namespace
 import  asyncio
 from    asyncio                     import AbstractEventLoop
 from    pfmisc                      import Colors as C
+import  json
 import  sys
+
+from typing import Any, Dict, List, Union
+from pydantic import BaseModel
 
 try:
     from    .               import __pkg, __version__
@@ -17,11 +22,62 @@ NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
 
+# Define a new type that includes all possibilities
+NestedDict = Union[str, Dict[str, Any], List[Any]]
+
+class SizeLimitedDict(BaseModel):
+    value: NestedDict
+
+
+# def size_limit(obj: Any, limit: int) -> NestedDict:
+#     if sys.getsizeof(obj) > limit:
+#         return "size too large"
+#     elif isinstance(obj, dict):
+#         return {k: size_limit(v, limit) for k, v in obj.items()}
+#     elif isinstance(obj, list):
+#         return [size_limit(elem, limit) for elem in obj]
+#     else:
+#         return obj
+
+
+def get_size(obj: NestedDict) -> int:
+    size = sys.getsizeof(obj)
+    if isinstance(obj, dict):
+        size += sum([get_size(v) for v in obj.values()])
+        size += sum([get_size(k) for k in obj.keys()])
+    elif hasattr(obj, '__dict__'):
+        size += get_size(obj.__dict__)
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+        size += sum([get_size(i) for i in obj])
+    return size
+
+def size_limit(obj: Any, limit: int, depth: int) -> NestedDict:
+    # if depth == 0 and sys.getsizeof(obj) > limit:
+    size:int    = get_size(obj)
+    if depth == 0 and size > limit:
+        # return "size too large"
+        return str(size)
+    elif isinstance(obj, dict):
+        return {k: size_limit(v, limit, depth - 1) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [size_limit(elem, limit, depth - 1) for elem in obj]
+    else:
+        return obj
+
 def responseData_print(mongodb:MONGO) -> None:
+    pudb.set_trace()
+    model:NestedDict= {}
+    respstr:str = ""
     try:
-        print(mongodb.responseData.model_dump_json())
+        respstr = mongodb.responseData.model_dump_json()
     except Exception as e:
-        print(mongodb.responseData.model_dump())
+        respstr = '%s' % mongodb.responseData.model_dump()
+    model   = json.loads(respstr)
+    if not settings.appsettings.noResponseTruncSize:
+        model   = size_limit(model,
+                             settings.mongosettings.responseTruncSize,
+                             settings.mongosettings.responseTruncDepth)
+    print(model)
 
 def run(
     options:Namespace,
