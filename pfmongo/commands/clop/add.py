@@ -1,6 +1,5 @@
 import  click
 import  pudb
-from pudb.settings import save_config
 from    pfmongo         import  driver
 from    argparse        import  Namespace
 from    pfmongo         import  env
@@ -61,13 +60,18 @@ def jsonFile_intoDictRead(filename:str) -> dict[bool,dict]:
 def upload(d_data:dict, options:Namespace, id:str="") -> int:
     if id:
         d_data['_id']   = id
+    d_data['_size']     = driver.get_size(d_data)
     options.do          = 'addDocument'
     options.argument    = d_data
     do:int              = driver.run(options)
     return do
 
 def currentCollection_getName(options:Namespace) -> str:
-    return env.collectionName_get(options)
+    currentCol:str      = env.collectionName_get(options)
+    if currentCol.endswith(settings.mongosettings.flattenSuffix):
+        currentCol = currentCol.rstrip(settings.mongosettings.flattenSuffix)
+        collection_connect(currentCol, options)
+    return currentCol
 
 def shadowCollection_getName(options:Namespace) -> str:
     sourceCol:str       = env.collectionName_get(options)
@@ -81,26 +85,26 @@ def collection_connect(collection:str, options:Namespace) -> int:
     return driver.run(options)
 
 def add_do(document:dict, options:Namespace, id:str) -> int:
-    save:int            = upload(document, options, id)
-    if settings.appsettings.donotFlatten:
-        return save
+    saveFail:int            = upload(document, options, id)
+    if settings.appsettings.donotFlatten or saveFail:
+        return saveFail
     pudb.set_trace()
-    thisCollection:str  = currentCollection_getName(options)
-    # connect:int         = collection_connect(
-    #                         shadowCollection_getName(options),
-    #                         options)
-    pudb.set_trace()
+    thisCollection:str      = currentCollection_getName(options)
     options.collectionName  = shadowCollection_getName(options)
-    save                = upload(flatten_dict(document), options, id)
+    saveFail                = upload(flatten_dict(document), options, id)
     options.collectionName  = thisCollection
-    connect             = collection_connect(thisCollection, options)
-    return save
+    connect:int             = collection_connect(thisCollection, options)
+    return saveFail
 
 @click.command(help=f"""
 {C.CYAN}add{NC} a document (read from the filesystem) to a collection
 
 This subcommand accepts a document filename (assumed to contain JSON
 formatted contents) and stores the contents in mongo.
+
+A "shadow" document with a flat dataspace is also added to a "shadow"
+collection. This "shadow" document facilitates searching and is kept
+"in sync" with the orginal.
 
 The "location" is defined by the core parameters, 'useDB' and 'useCollection'
 which are typically defined in the CLI, in the system environment, or in the
@@ -126,5 +130,5 @@ def add(ctx:click.Context, document:str, id:str="") -> int:
         return 100
     if isinstance(d_dataOK, dict):
         d_data          = d_dataOK
-    save:int            = add_do(d_data, options, id)
-    return save
+    saveFail:int        = add_do(d_data, options, id)
+    return saveFail
