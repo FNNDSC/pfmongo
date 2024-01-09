@@ -28,18 +28,6 @@ NestedDict = Union[str, Dict[str, Any], List[Any]]
 class SizeLimitedDict(BaseModel):
     value: NestedDict
 
-
-# def size_limit(obj: Any, limit: int) -> NestedDict:
-#     if sys.getsizeof(obj) > limit:
-#         return "size too large"
-#     elif isinstance(obj, dict):
-#         return {k: size_limit(v, limit) for k, v in obj.items()}
-#     elif isinstance(obj, list):
-#         return [size_limit(elem, limit) for elem in obj]
-#     else:
-#         return obj
-
-
 def get_size(obj: NestedDict) -> int:
     size = sys.getsizeof(obj)
     if isinstance(obj, dict):
@@ -56,7 +44,7 @@ def size_limit(obj: Any, limit: int, depth: int) -> NestedDict:
     size:int    = get_size(obj)
     if depth == 0 and size > limit:
         # return "size too large"
-        return str(size)
+        return f">>>truncated<<<({str(size)} > {limit})"
     elif isinstance(obj, dict):
         return {k: size_limit(v, limit, depth - 1) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -64,20 +52,39 @@ def size_limit(obj: Any, limit: int, depth: int) -> NestedDict:
     else:
         return obj
 
+def model_pruneForDisplay(model:NestedDict) -> NestedDict:
+    if not settings.appsettings.noResponseTruncSize:
+        model   = size_limit(model,
+                             settings.mongosettings.responseTruncSize,
+                             settings.mongosettings.responseTruncDepth)
+    depthUp:int = 1
+    while get_size(model) > settings.mongosettings.responseTruncOver:
+        model = size_limit(model,
+                           settings.mongosettings.responseTruncSize,
+                           settings.mongosettings.responseTruncDepth-depthUp)
+        depthUp += 1
+    return model
+
 def responseData_print(mongodb:MONGO) -> None:
-    pudb.set_trace()
-    model:NestedDict= {}
+    model:NestedDict            = {}
+    modelForDisplay:NestedDict  = {}
     respstr:str = ""
     try:
         respstr = mongodb.responseData.model_dump_json()
     except Exception as e:
         respstr = '%s' % mongodb.responseData.model_dump()
-    model   = json.loads(respstr)
-    if not settings.appsettings.noResponseTruncSize:
-        model   = size_limit(model,
-                             settings.mongosettings.responseTruncSize,
-                             settings.mongosettings.responseTruncDepth)
-    print(model)
+    model           = json.loads(respstr)
+    modelForDisplay = model_pruneForDisplay(model)
+    print(json.dumps(modelForDisplay))
+    if settings.appsettings.modelSizesPrint:
+        print(json.dumps(
+            {
+                'modelSize': {
+                    'orig' : get_size(model),
+                    'disp' : get_size(modelForDisplay)
+                }
+            }
+        ))
 
 def run(
     options:Namespace,
