@@ -17,13 +17,16 @@ class Mongo(BaseSettings):
     flattenSuffix:str       = "-flat"
     responseTruncDepth:int  = 4
     responseTruncSize:int   = 6000
+    responseTruncOver:int   = 100000
 
 class App(BaseSettings):
     logging:dataModel.loggingType = dataModel.loggingType.CONSOLE
-    noDuplicates:bool       = True
+    allowDuplicates:bool    = True
     noHashing:bool          = True
     donotFlatten:bool       = True
     noResponseTruncSize:bool= True
+    conciseOutput:bool      = False
+    modelSizesPrint:bool    = False
 
 logging_val:Optional[str]   = 'CONSOLE'
 if 'LOGGING' in os.environ:
