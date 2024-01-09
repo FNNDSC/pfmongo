@@ -96,9 +96,9 @@ package_CLIself = '''
         [--noDuplicates]                                                        \\
         [--donotFlatten]                                                        \\
         [--noResponseTruncSize]                                                 \\
+        [--conciseOutput]                                                       \\
         [--responseTruncDepth <depth>]                                          \\
         [--responseTruncSize <size>]                                            \\
-        [--donotFlatten]                                                        \\
         [--man]                                                                 \\
         [--version]'''
 
@@ -172,9 +172,9 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
         default = False,
         action  = 'store_true')
 
-    parserSelf.add_argument("--noDuplicates",
-        help    = "do not allow duplicate (hashed) documents",
-        dest    = 'noDuplicates',
+    parserSelf.add_argument("--allowDuplicates",
+        help    = "allow duplicate (hashed) documents",
+        dest    = 'allowDuplicates',
         default = False,
         action  = 'store_true')
 
@@ -187,6 +187,12 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
     parserSelf.add_argument("--noResponseTruncSize",
         help    = "do not truncate responses, even if nested and high data",
         dest    = 'noResponseTruncSize',
+        default = False,
+        action  = 'store_true')
+
+    parserSelf.add_argument("--conciseOutput",
+        help    = "provide only the important outputs",
+        dest    = 'conciseOutput',
         default = False,
         action  = 'store_true')
 
@@ -280,9 +286,10 @@ class Pfmongo:
     """
 
     def setup_fromCLI(self) -> None:
-        settings.appsettings.noDuplicates           = self.args.noDuplicates
+        settings.appsettings.allowDuplicates        = self.args.allowDuplicates
         settings.appsettings.noHashing              = self.args.noHashing
         settings.appsettings.donotFlatten           = self.args.donotFlatten
+        settings.appsettings.conciseOutput          = self.args.conciseOutput
         settings.appsettings.noResponseTruncSize    = self.args.noResponseTruncSize
         if self.args.responseTruncSize:
             settings.mongosettings.responseTruncSize= self.args.responseTruncSize
@@ -312,7 +319,7 @@ class Pfmongo:
             self,
             data: Any
     ) -> responseModel.mongodbResponse:
-        self.exitCode   = env.response_exitCode(data)
+        self.exitCode       = env.response_exitCode(data)
         self.responseData   = responseData_build(
             {
                 'status':   data.status,
