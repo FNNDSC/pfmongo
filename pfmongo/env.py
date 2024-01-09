@@ -21,6 +21,7 @@ except:
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
+LR  = C.LIGHT_RED
 
 def complain(
         message:str,
@@ -83,19 +84,42 @@ def response_exitCode(var:      responseModel.databaseDesc  |\
 ) -> int:
     exitCode:int    = 0
     match var:
-        case responseModel.databaseDesc():
+        case responseModel.databaseDesc() | responseModel.collectionDesc():
             exitCode    = 0 if var.info.connected else 100
+        case responseModel.DocumentAddUsage():
+            exitCode    = 0 if var.status else 101
     return exitCode
 
-def response_messageDesc(var:   responseModel.databaseDesc |\
+def databaseOrCollectionDesc_message(var:responseModel.databaseDesc|\
+                                         responseModel.collectionDesc) -> str:
+    messge:str  = ""
+    message     = f'Success while connecting {var.otype}: "{var.name}"'\
+                    if var.info.connected else \
+                  f'Could not connect to mongo {var.otype}: "{var.name}"'
+    return message
+
+def documentAddUsage_message(var:responseModel.DocumentAddUsage) -> str:
+    message:str = ""
+    name:str    = var.document['_id']
+    db:str      = var.collection.databaseName
+    col:str     = var.collection.name
+    size:int    = 0
+    if '_size' in var.document:
+        size    = var.document['_size']
+    message     = f'Successfully added "{name} (size {size}) to {db}/{col}' \
+                    if var.status else \
+                  f'Could not add "{name}" (size {size}) to {db}/{col}'
+    return message
+
+def response_messageDesc(var:   responseModel.databaseDesc      |\
                                 responseModel.collectionDesc
 ) -> str:
     message:str     = ""
     match var:
-        case responseModel.databaseDesc():
-            message = f'Success while connecting {var.otype}: "{var.name}"'\
-                      if var.info.connected else \
-                      f'Could not connect to mongo {var.otype}: "{var.name}"'
+        case responseModel.databaseDesc() | responseModel.collectionDesc():
+            message = databaseOrCollectionDesc_message(var)
+        case responseModel.DocumentAddUsage():
+            message = documentAddUsage_message(var)
     return message
 
 def connectDB_failureCheck(
@@ -219,8 +243,12 @@ def addDocument_failureCheck(
                 dataModel.messageType.ERROR)
     if not usage.status:
         complain(f'''
-                A document add usage error has occured. This typically means that
-                a duplicate 'id' has been specified. Please check the value of any
+                A document add usage error has occured, reported as:
+
+                {LR}{usage.resp['error']}{NC}
+
+                This typically means that a duplicate 'id' has been specified.
+                Please check the value of any
 
                     {CY}--id {GR}<value>{NC}
 
