@@ -97,8 +97,9 @@ class mongoDB():
         ld_collection:list  = [d for d in self.ld_collection
                                 if d['name'] == collection.name]
         for d in ld_collection:
-            insert.resp     = await d['object'].document_add(d_document)
-            insert.status   = insert.resp['acknowledged']
+            insert.resp         = await d['object'].document_add(d_document)
+            insert.status       = insert.resp['acknowledged']
+            insert.documentName = insert.resp['inserted_id']
         return insert
 
     async def delete_one(self, collection:responseModel.collectionDesc, **kwargs) \
@@ -283,18 +284,21 @@ class mongoCollection():
             b_ret           = True
         return b_ret
 
+    def dbcol_add(self, d_resp:dict) -> dict:
+        d_resp['database']      = self.DB.name
+        d_resp['collection']    = self.collection.name
+        return d_resp
+
     async def document_add(self, d_data:dict) -> dict:
         # pudb.set_trace()
-        d_resp:dict         = {
+        d_resp:dict         = self.dbcol_add({
                 'acknowledged'  : False,
                 'inserted_id'   : "-1",
-                'database'      : "",
-                'collection'    : "",
                 'error'         : ""
-        }
+        })
         if self.addHashToDocument:
             d_data          = self.hash_addToDocument(d_data)
-        if await self.is_duplicate(d_data) and self.noDuplicates:
+        if await self.is_duplicate(d_data) and not self.allowDuplicates:
            d_resp['error']  = 'Duplicate document hash found.'
         else:
             resp:results.InsertOneResult    = results.InsertOneResult(None, False)
@@ -304,8 +308,6 @@ class mongoCollection():
                 d_resp['error']     = '%s' % e
             d_resp['acknowledged']  =  resp.acknowledged
             d_resp['inserted_id']   = str(resp.inserted_id)
-            d_resp['database']      = self.DB.name
-            d_resp['collection']    = self.collection.name
         return d_resp
 
     async def document_delete(self, id:str) -> dict:
@@ -378,31 +380,11 @@ class mongoCollection():
         await self.create_text_index()
 
         regex = "|".join(search_terms)  # Create a regex pattern that matches any of the search terms
-        documents = []
         async for doc in self.collection.find({}):
             for key, value in doc.items():
                 if re.search(regex, str(value), re.IGNORECASE):
                     d_resp['find_list'].append(doc['_id'])
-
-        # regex = "|".join(searchFor)  # Create a regex pattern that matches any of the search terms
-        # query = { "$and": [ { "$or": [ { k: { "$regex": re.compile(regex, re.IGNORECASE) } } for k in doc.keys() ] } for doc in await self.collection.find({}).to_list(None) ] }
-
-        # cursor = self.collection.find(query)
-
-        # query = { "$and": [ { "$text": { "$search": term } } for term in searchFor ] }
-        # cursor = self.collection.find(query)
-
-        # documents = await cursor.to_list()
-        # return [Document(_id=doc['_id']) for doc in documents]
-
-
-        # Construct the query dynamically using $where
-
-        # cursor = self.collection.find(query, projection={"_id": 1})
-
-        # Fetch the document _ids
-        # dt = [d async for d in cursor]
-        # d_resp['find_list'] = [document["_id"] async for document in cursor]
+                    break
 
         if len(d_resp['find_list']):
             d_resp['acknowledged']  = True
@@ -448,7 +430,7 @@ class mongoCollection():
     def __init__(self, DBobject:mongoDB) -> None:
         self.DB:AIO.AsyncIOMotorDatabase    = DBobject.getDB()
         self.d_collection:dict              = {}
-        self.noDuplicates:bool              = DBobject.args.noDuplicates
+        self.allowDuplicates:bool           = DBobject.args.allowDuplicates
         self.addHashToDocument              = not DBobject.args.noHashing
         self.donotFlatten                   = DBobject.args.donotFlatten
 
