@@ -180,11 +180,35 @@ class mongoDB():
     async def connectCol(self, name:str) -> dict:
         colObj:mongoCollection      = mongoCollection(self)
         return {
-                "name"      : name,
-                "collection": await colObj.connect(name),
-                "object":   colObj,
-                "interface":  self.Mongo[name]
+                "name"      :   name,
+                "collection":   await colObj.connect(name),
+                "object":       colObj,
+                "interface":    self.Mongo[name]
         }
+
+    async def collection_delete(self, name:str) -> responseModel.CollectionDeleteUsage:
+        pudb.set_trace()
+        resp:responseModel.CollectionDeleteUsage = responseModel.CollectionDeleteUsage()
+        resp.collectionName     = name
+        l_names     = [ x['name'] for x in self.ld_collection]
+        if name not in l_names:
+            resp.resp['error']  = 'collection not found'
+        else:
+            lookup:dict = {}
+            lookupOrNone:dict|None = next(
+                            (i
+                            for i in self.ld_collection if i['name'] == name),
+                            None
+                      )
+            if lookupOrNone:
+                lookup = lookupOrNone
+                resp.collection = lookup['collection']
+                collectionToRemove:AIO.AsyncIOMotorCollection = \
+                        lookup['object'].d_collection['interface']
+                await collectionToRemove.drop()
+                self.ld_collection.remove(lookup)
+                resp.status     = True
+        return resp
 
     async def collection_connect(self, name:str) -> responseModel.collectionDesc:
         resp:responseModel.collectionDesc   = responseModel.collectionDesc()
@@ -198,7 +222,7 @@ class mongoDB():
                             for i in self.ld_collection if i['name'] == name),
                             None
                       )
-            if lookup: resp = lookup
+            if lookup: resp.collectionDesc = lookup
         return resp
 
     def __init__(self, **kwargs) -> None:
