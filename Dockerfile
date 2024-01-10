@@ -1,5 +1,5 @@
 #
-# Dockerfile for persair.
+# Dockerfile for pfmongo.
 #
 # Build with
 #
@@ -7,26 +7,26 @@
 #
 # For example if building a local version, you could do:
 #
-#   docker build --build-arg UID=$UID -t local/persair .
+#   docker build --build-arg UID=$UID -t local/pfmongo .
 #
 # In the case of a proxy (located at say 10.41.13.4:3128), do:
 #
 #    export PROXY="http://10.41.13.4:3128"
-#    docker build --build-arg http_proxy=$PROXY --build-arg UID=$UID -t local/persair .
+#    docker build --build-arg http_proxy=$PROXY --build-arg UID=$UID -t local/pfmongo .
 #
 # To run an interactive shell inside this container, do:
 #
-#   docker run -ti --entrypoint /bin/bash local/persair
+#   docker run -ti --entrypoint /bin/bash local/pfmongo
 #
 # To pass an env var HOST_IP to the container, do:
 #
-#   docker run -ti -e HOST_IP=$(ip route | grep -v docker | awk '{if(NF==11) print $9}') --entrypoint /bin/bash local/persair
+#   docker run -ti -e HOST_IP=$(ip route | grep -v docker | awk '{if(NF==11) print $9}') --entrypoint /bin/bash local/pfmongo
 #
 FROM docker.io/python:3.11.0-slim-bullseye
 
 LABEL DEVELOPMENT="                                                         \
     docker run --rm -it                                                     \
-    -v $PWD/persair:/persair:ro  local/persair                              \
+    -v $PWD/pfmongo:/pfmongo:ro  local/pfmongo                              \
 "
 
 WORKDIR /pfmongo
