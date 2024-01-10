@@ -77,6 +77,7 @@ def shadowCollection_getName(options:Namespace) -> str:
     sourceCol:str       = env.collectionName_get(options)
     shadowSuffix:str    = settings.mongosettings.flattenSuffix
     shadowCol:str       = sourceCol + shadowSuffix
+    collection_connect(shadowCol, options)
     return shadowCol
 
 def collection_connect(collection:str, options:Namespace) -> int:
@@ -90,6 +91,7 @@ def add_do(document:dict, options:Namespace, id:str) -> int:
     saveFail:int            = upload(document, options, id)
     if settings.appsettings.donotFlatten or saveFail:
         return saveFail
+    # pudb.set_trace()
     options.collectionName  = shadowCollection_getName(options)
     saveFail                = upload(flatten_dict(document), options, id)
     options.collectionName  = thisCollection
