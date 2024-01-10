@@ -79,10 +79,12 @@ def sessionUser_notSet() -> int:
                 dataModel.messageType.ERROR)
     return 0
 
-def response_exitCode(var:      responseModel.databaseDesc      |\
-                                responseModel.collectionDesc    |\
-                                responseModel.DocumentAddUsage  |\
-                                responseModel.DocumentSearchUsage
+def response_exitCode(var:      responseModel.databaseDesc          |\
+                                responseModel.collectionDesc        |\
+                                responseModel.DocumentAddUsage      |\
+                                responseModel.DocumentSearchUsage   |\
+                                responseModel.DocumentListUsage     |\
+                                responseModel.CollectionDeleteUsage
 ) -> int:
     exitCode:int    = 0
     match var:
@@ -92,6 +94,10 @@ def response_exitCode(var:      responseModel.databaseDesc      |\
             exitCode    = 0 if var.status else 101
         case responseModel.DocumentSearchUsage():
             exitCode    = 0 if var.status else 102
+        case responseModel.DocumentListUsage():
+            exitCode    = 0 if var.status else 103
+        case responseModel.CollectionDeleteUsage():
+            exitCode    = 0 if var.status else 104
     return exitCode
 
 def databaseOrCollectionDesc_message(var:responseModel.databaseDesc|\
@@ -116,14 +122,28 @@ def documentAddUsage_message(var:responseModel.DocumentAddUsage) -> str:
     return message
 
 def documentSearchUsage_message(var:responseModel.DocumentSearchUsage) -> str:
-    messge:str  = ""
+    message:str  = ""
     message     = f'{var.documentList}' if var.status else ''
     return message
 
-def response_messageDesc(var:   responseModel.databaseDesc      |\
-                                responseModel.collectionDesc    |\
-                                responseModel.DocumentAddUsage  |\
-                                responseModel.DocumentSearchUsage
+def documentListUsage_message(var:responseModel.DocumentListUsage) -> str:
+    message:str  = ""
+    message     = f'{var.documentList}' if var.status else ''
+    return message
+
+def collectionDeleteUsage_message(var:responseModel.CollectionDeleteUsage) -> str:
+    message:str  = ""
+    message     = f'Successfully deleted collection {var.collectionName}'   \
+                        if var.status else                                  \
+                  f'Could not delete collection {var.collectionName}'
+    return message
+
+def response_messageDesc(var:   responseModel.databaseDesc          |\
+                                responseModel.collectionDesc        |\
+                                responseModel.DocumentAddUsage      |\
+                                responseModel.DocumentSearchUsage   |\
+                                responseModel.DocumentListUsage     |\
+                                responseModel.CollectionDeleteUsage
 ) -> str:
     message:str     = ""
     match var:
@@ -133,6 +153,10 @@ def response_messageDesc(var:   responseModel.databaseDesc      |\
             message = documentAddUsage_message(var)
         case responseModel.DocumentSearchUsage():
             message = documentSearchUsage_message(var)
+        case responseModel.DocumentListUsage():
+            message = documentListUsage_message(var)
+        case responseModel.CollectionDeleteUsage():
+            message = collectionDeleteUsage_message(var)
     return message
 
 def connectDB_failureCheck(
@@ -278,7 +302,7 @@ def deleteDocument_failureCheck(
     # pudb.set_trace()
     if not usage.collection.info.connected:
         complain(f'''
-                A document add usage error has occured. This typically means that
+                A document delete error has occured. This typically means that
                 the mongo DB service has either not been started or has not been
                 specified correctly.
 
@@ -301,6 +325,33 @@ def deleteDocument_failureCheck(
                 6,
                 dataModel.messageType.ERROR)
 
+    return usage
+
+def deleteCollection_failureCheck(
+        usage:responseModel.CollectionDeleteUsage
+) -> responseModel.CollectionDeleteUsage:
+    # pudb.set_trace()
+    if not usage.collection.info.connected:
+        complain(f'''
+                A collection deletion error has occured. This typically means that
+                the mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Alternatively, the collection "{usage.collectionName}" does not exist.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                7,
+                dataModel.messageType.ERROR)
+    elif not usage.status:
+        complain(f'''
+                A collection delete usage error has occured in the monogo deletion call.
+                ''',
+                8,
+                dataModel.messageType.ERROR)
     return usage
 
 def listDocument_failureCheck(
