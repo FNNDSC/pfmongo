@@ -346,6 +346,22 @@ class Pfmongo:
         self.responseData   = self.responseData_log(allCollections)
         return allCollections
 
+
+    async def deleteCollection(self, collection:str) \
+    -> responseModel.CollectionDeleteUsage:
+        collectionDelete:responseModel.CollectionDeleteUsage = \
+                responseModel.CollectionDeleteUsage()
+        if not (
+            connectCol := await self.connectCollection_do(env.collectionName_get(self.args))
+        ).info.connected:
+            collectionDelete.collection  = connectCol
+            return collectionDelete
+        self.responseData_log(collectionDelete := await self.dbAPI.collection_delete(
+                                collection
+                            )
+        )
+        return collectionDelete
+
     async def documentAdd(self, d_json:dict) \
     -> responseModel.DocumentAddUsage:
         documentAdd:responseModel.DocumentAddUsage = \
@@ -516,6 +532,12 @@ class Pfmongo:
             await self.documentDelete(id)
         )
 
+    async def deleteCollection_do(self, collection:str) \
+    -> responseModel.CollectionDeleteUsage:
+        return env.deleteCollection_failureCheck(
+            await self.deleteCollection(collection)
+        )
+
     async def listDocument_do(self, field:str) \
     -> responseModel.DocumentListUsage:
         return env.listDocument_failureCheck(
@@ -547,6 +569,7 @@ class Pfmongo:
             case 'connectCollection':   await self.connectCollection_do(self.args.argument)
             case 'addDocument':         await self.addDocument_do(self.args.argument)
             case 'deleteDocument':      await self.deleteDocument_do(self.args.argument)
+            case 'deleteCollection':    await self.deleteCollection_do(self.args.argument)
             case 'listDocument':        await self.listDocument_do(self.args.argument)
             case 'getDocument':         await self.getDocument_do(self.args.argument)
             case 'searchDocument':      await self.searchDocument_do(self.args.argument)
