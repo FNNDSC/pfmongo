@@ -37,7 +37,7 @@ The "hits" are returned referenced by the passed "field".
 @click.option('--target',
     type        = str,
     help        = \
-    "A comma separated list. The logical AND of the search is returned",
+    "A comma separated list. The logical OR of the search is returned",
     default     = '')
 @click.option('--field',
     type        = str,
