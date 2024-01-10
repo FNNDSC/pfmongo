@@ -28,7 +28,7 @@ def mongo_responseEmbed(state:responseModel.stateResponse) \
         {
             'status':   True,
             'connect':  state
-        }, "Internal state response"
+        }, f"{state.database}/{state.collection}"
     )
 
 @click.command(help=f"""
