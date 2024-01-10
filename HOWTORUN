@@ -3,28 +3,37 @@
 #
 # The mongodb (and ui) services need to be instantiated first. These are
 # "immortal" in as much as their lifetime continues beyond the epochs of
-# persair.
+# pfmongo.
 #
-# The persair application itself is dockerized and can be run from a
+# The pfmongo application itself is dockerized and can be run from a
 # container.
 #
 
 # Build (for fish shell syntax!)
 set UID (id -u)
-docker build --build-arg UID=$UID -t local/persair .
+docker build --build-arg UID=$UID -t local/pfmongo .
 
 # Start up the mongodb (and ui)
 docker-compose up
 
-# Run persair (with support for source debugging)
-docker run --rm -it --name persair                                              \
-        --network persair_pfmongo                                                 \
+# Set some env vars
+export MD_URI=mongodb://localhost:27017 && export MD_USERNAME=admin && export MD_PASSWORD=admin && export MD_SESSIONUSER=rudolph
+
+# "Install"
+pip install -e ./
+
+# Check "internal" state
+pfmongo state showall
+
+# Run pfmongo (with support for source debugging)
+docker run --rm -it --name pfmongo                                              \
+        --network pfmongo_pfmongo                                               \
         -e ReadWriteKey=tanguro                                                 \
         -e MD_DB=tanguro                                                        \
-        -e DBauthPath=/home/dicom/services/pfmongo.json                           \
-        -e MD_URI=mongodb://pfmongo-db:27017                                      \
+        -e DBauthPath=/home/dicom/services/pfmongo.json                         \
+        -e MD_URI=mongodb://pfmongo-db:27017                                    \
         -e MD_username=admin                                                    \
         -e MD_password=admin                                                    \
-        -v $PWD/persair:/usr/local/lib/python3.11/site-packages/persair         \
-        local/persair persair
+        -v $PWD/pfmongo:/usr/local/lib/python3.11/site-packages/pfmongo         \
+        local/pfmongo pfmongo
 
