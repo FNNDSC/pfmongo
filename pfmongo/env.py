@@ -79,8 +79,10 @@ def sessionUser_notSet() -> int:
                 dataModel.messageType.ERROR)
     return 0
 
-def response_exitCode(var:      responseModel.databaseDesc  |\
-                                responseModel.collectionDesc
+def response_exitCode(var:      responseModel.databaseDesc      |\
+                                responseModel.collectionDesc    |\
+                                responseModel.DocumentAddUsage  |\
+                                responseModel.DocumentSearchUsage
 ) -> int:
     exitCode:int    = 0
     match var:
@@ -88,12 +90,14 @@ def response_exitCode(var:      responseModel.databaseDesc  |\
             exitCode    = 0 if var.info.connected else 100
         case responseModel.DocumentAddUsage():
             exitCode    = 0 if var.status else 101
+        case responseModel.DocumentSearchUsage():
+            exitCode    = 0 if var.status else 102
     return exitCode
 
 def databaseOrCollectionDesc_message(var:responseModel.databaseDesc|\
                                          responseModel.collectionDesc) -> str:
     messge:str  = ""
-    message     = f'Success while connecting {var.otype}: "{var.name}"'\
+    message     = f'Successfully connected {var.otype} to "{var.name}"'\
                     if var.info.connected else \
                   f'Could not connect to mongo {var.otype}: "{var.name}"'
     return message
@@ -106,13 +110,20 @@ def documentAddUsage_message(var:responseModel.DocumentAddUsage) -> str:
     size:int    = 0
     if '_size' in var.document:
         size    = var.document['_size']
-    message     = f'Successfully added "{name} (size {size}) to {db}/{col}' \
+    message     = f'Successfully added "{name}" (size {size}) to "{db}/{col}"' \
                     if var.status else \
-                  f'Could not add "{name}" (size {size}) to {db}/{col}'
+                  f'Could not add "{name}" (size {size}) to "{db}/{col}"'
+    return message
+
+def documentSearchUsage_message(var:responseModel.DocumentSearchUsage) -> str:
+    messge:str  = ""
+    message     = f'{var.documentList}' if var.status else ''
     return message
 
 def response_messageDesc(var:   responseModel.databaseDesc      |\
-                                responseModel.collectionDesc
+                                responseModel.collectionDesc    |\
+                                responseModel.DocumentAddUsage  |\
+                                responseModel.DocumentSearchUsage
 ) -> str:
     message:str     = ""
     match var:
@@ -120,6 +131,8 @@ def response_messageDesc(var:   responseModel.databaseDesc      |\
             message = databaseOrCollectionDesc_message(var)
         case responseModel.DocumentAddUsage():
             message = documentAddUsage_message(var)
+        case responseModel.DocumentSearchUsage():
+            message = documentSearchUsage_message(var)
     return message
 
 def connectDB_failureCheck(
