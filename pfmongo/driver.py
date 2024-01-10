@@ -1,6 +1,7 @@
 import  pudb
 from    typing                      import Callable, Optional
 from    pfmongo                     import pfmongo
+from    pfmongo.models              import responseModel
 from    pfmongo.pfmongo             import Pfmongo  as MONGO
 from    pfmongo.config              import settings
 from    argparse                    import Namespace
@@ -10,7 +11,7 @@ from    pfmisc                      import Colors as C
 import  json
 import  sys
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, cast
 from pydantic import BaseModel
 
 try:
@@ -54,7 +55,7 @@ def size_limit(obj: Any, limit: int, depth: int) -> NestedDict:
 
 def model_pruneForDisplay(model:NestedDict) -> NestedDict:
     if not settings.appsettings.noResponseTruncSize:
-        model   = size_limit(model,
+        model = size_limit(model,
                              settings.mongosettings.responseTruncSize,
                              settings.mongosettings.responseTruncDepth)
     depthUp:int = 1
@@ -65,17 +66,35 @@ def model_pruneForDisplay(model:NestedDict) -> NestedDict:
         depthUp += 1
     return model
 
+def model_gets(mongodb:MONGO) -> tuple[Callable[[], str], NestedDict, NestedDict]:
+    """ return the internal response model as a string """
+    model:NestedDict            = {}
+    modelForDisplay:NestedDict  = {}
+
+    def model_toStr():
+        respstr:str             = ""
+        if settings.appsettings.conciseOutput:
+            return mongodb.responseData.message
+        try:
+            respstr = mongodb.responseData.model_dump_json()
+        except Exception as e:
+            respstr = '%s' % mongodb.responseData.model_dump()
+        model           = json.loads(respstr)
+        modelForDisplay = model_pruneForDisplay(model)
+        if settings.appsettings.conciseOutput:
+            respstr     = mongodb.responseData.message
+        else:
+            respstr     = json.dumps(modelForDisplay)
+        return respstr
+
+    return model_toStr, model, modelForDisplay
+
 def responseData_print(mongodb:MONGO) -> None:
     model:NestedDict            = {}
     modelForDisplay:NestedDict  = {}
-    respstr:str = ""
-    try:
-        respstr = mongodb.responseData.model_dump_json()
-    except Exception as e:
-        respstr = '%s' % mongodb.responseData.model_dump()
-    model           = json.loads(respstr)
-    modelForDisplay = model_pruneForDisplay(model)
-    print(json.dumps(modelForDisplay))
+    model_asString, model, modelForDisplay     = model_gets(mongodb)
+    print(model_asString())
+
     if settings.appsettings.modelSizesPrint:
         print(json.dumps(
             {
