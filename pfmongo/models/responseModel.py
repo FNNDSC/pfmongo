@@ -101,6 +101,14 @@ class DocumentDeleteUsage(BaseModel):
     resp:dict                       = {}
     collection:collectionDesc       = collectionDesc()
 
+class CollectionDeleteUsage(BaseModel):
+    """ response for deleting a collection from a database """
+    status:bool                     = False
+    otype:str                       = "deleting collection"
+    collectionName:str              = ""
+    resp:dict                       = {}
+    collection:collectionDesc       = collectionDesc()
+
 class DocumentListUsage(BaseModel):
     """ response for listing all documents from a collection """
     status:bool                     = False
