@@ -412,6 +412,7 @@ class Pfmongo:
                                 field       = field
                             )
         )
+        # reconnect to non-flat in a thread safe way?
         return documentList
 
     async def documentGet(self, id:str) \
@@ -457,6 +458,7 @@ class Pfmongo:
                     collectionName,
                     env.collection_stateFileResolve
             )
+            self.args.collectionName = collectionName
         return connectCol
 
     async def collectionDesc_check(self) -> responseModel.collectionDesc:
