@@ -85,11 +85,11 @@ def collection_connect(collection:str, options:Namespace) -> int:
     return driver.run(options)
 
 def add_do(document:dict, options:Namespace, id:str) -> int:
+    thisCollection:str      = currentCollection_getName(options)
+    # pudb.set_trace()
     saveFail:int            = upload(document, options, id)
     if settings.appsettings.donotFlatten or saveFail:
         return saveFail
-    pudb.set_trace()
-    thisCollection:str      = currentCollection_getName(options)
     options.collectionName  = shadowCollection_getName(options)
     saveFail                = upload(flatten_dict(document), options, id)
     options.collectionName  = thisCollection
@@ -122,7 +122,7 @@ session state.
     default = '')
 @click.pass_context
 def add(ctx:click.Context, document:str, id:str="") -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     options:Namespace   = ctx.obj['options']
     d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(document))
     d_data:dict         = {}
