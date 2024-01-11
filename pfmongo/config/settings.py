@@ -25,8 +25,10 @@ class App(BaseSettings):
     noHashing:bool          = True
     donotFlatten:bool       = True
     noResponseTruncSize:bool= True
+    noComplain:bool         = False
     conciseOutput:bool      = False
     modelSizesPrint:bool    = False
+    eventLoopDebug:bool     = False
 
 logging_val:Optional[str]   = 'CONSOLE'
 if 'LOGGING' in os.environ:
