@@ -60,12 +60,14 @@ class collectionDesc(BaseModel):
 # API usage returns
 
 class showAllDBusage(BaseModel):
+    """ response for getting a list of all databases in a mongoDB """
     status:bool                     = False
     otype:str                       = "accessing database names"
     databaseNames:list              = []
     info:databaseConnectStatus      = databaseConnectStatus()
 
 class showAllcollectionsUsage(BaseModel):
+    """ response for getting a list of all collections in a database """
     status:bool                     = False
     otype:str                       = "accessing collection names"
     collectionNames:list            = []
@@ -108,6 +110,14 @@ class CollectionDeleteUsage(BaseModel):
     collectionName:str              = ""
     resp:dict                       = {}
     collection:collectionDesc       = collectionDesc()
+
+class dbDeleteUsage(BaseModel):
+    """ response for deleting a database from a mongo server """
+    status:bool                     = False
+    otype:str                       = "deleting collection"
+    dbName:str                      = ""
+    resp:dict                       = {}
+    db:databaseDesc                 = databaseDesc()
 
 class DocumentListUsage(BaseModel):
     """ response for listing all documents from a collection """
