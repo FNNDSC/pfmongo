@@ -85,7 +85,7 @@ def collection_connect(collection:str, options:Namespace) -> int:
     options.argument    = collection
     return driver.run(options)
 
-def add_do(document:dict, options:Namespace, id:str) -> int:
+def add_do(document:dict, id:str, options:Namespace) -> int:
     thisCollection:str      = currentCollection_getName(options)
     # pudb.set_trace()
     saveFail:int            = upload(document, options, id)
@@ -96,6 +96,16 @@ def add_do(document:dict, options:Namespace, id:str) -> int:
     saveFail                = upload(flatten_dict(document), options, id)
     options.collectionName  = thisCollection
     connect:int             = collection_connect(thisCollection, options)
+    return saveFail
+
+def document_add(documentFile:str, id:str, options:Namespace) -> int:
+    d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(documentFile))
+    d_data:dict         = {}
+    if not d_dataOK:
+        return 100
+    if isinstance(d_dataOK, dict):
+        d_data          = d_dataOK
+    saveFail:int        = add_do(d_data, id, options)
     return saveFail
 
 @click.command(help=f"""
@@ -125,12 +135,4 @@ session state.
 @click.pass_context
 def add(ctx:click.Context, document:str, id:str="") -> int:
     # pudb.set_trace()
-    options:Namespace   = ctx.obj['options']
-    d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(document))
-    d_data:dict         = {}
-    if not d_dataOK:
-        return 100
-    if isinstance(d_dataOK, dict):
-        d_data          = d_dataOK
-    saveFail:int        = add_do(d_data, options, id)
-    return saveFail
+    return document_add(document, id, ctx.obj['options'])
