@@ -2,17 +2,17 @@ import  click
 import  pudb
 from    pfmongo         import  driver
 from    argparse        import  Namespace
-from    pfmongo         import  env
-import  json
-from    typing          import  Union
 from    pfmisc          import  Colors as C
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
 
-from pfmongo.models.dataModel import messageType
-
+def collection_list(field:str, options:Namespace) -> int:
+    options.do          = 'listDocument'
+    options.argument    = field
+    ls:int              = driver.run(options)
+    return ls
 
 @click.command(help=f"""
 {C.CYAN}list{NC} all documents (read from the filesystem) in a collection
@@ -29,9 +29,6 @@ session state.
     default     = '_id')
 @click.pass_context
 def list(ctx:click.Context, field:str) -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     options:Namespace   = ctx.obj['options']
-    options.do          = 'listDocument'
-    options.argument    = field
-    ls:int              = driver.run(options)
-    return ls
+    return collection_list(field, options)
