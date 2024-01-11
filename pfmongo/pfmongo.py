@@ -97,6 +97,8 @@ package_CLIself = '''
         [--donotFlatten]                                                        \\
         [--noResponseTruncSize]                                                 \\
         [--conciseOutput]                                                       \\
+        [--noComplain]                                                          \\
+        [--eventLoopDebug]                                                      \\
         [--responseTruncDepth <depth>]                                          \\
         [--responseTruncSize <size>]                                            \\
         [--man]                                                                 \\
@@ -133,6 +135,16 @@ package_argSynopsisSelf = f"""
         {YL}[--noResponseSizeTrunc]{NC}
         If set, do not truncate response returns from pfmongo calls. Note that
         some responses can be "wordy", so only use if strictly needed.
+
+        {YL}[--noComplain]{NC}
+        If set, suppress the "complain" messages that typically provide more
+        information on error or warning events.
+
+        {YL}[--conciseOutput]{NC}
+        If set, only provide concise output relevant to the operation at hand.
+
+        {YL}[--eventLoopDebug]{NC}
+        If set, activate a hidden "pudb.set_trace()" in the main event loop.
 
         {YL}[--responseTruncSize <size>]{NC}
         Set the size limit on a given (nested) set of data in the response from
@@ -190,9 +202,21 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
         default = False,
         action  = 'store_true')
 
+    parserSelf.add_argument("--noComplain",
+        help    = "suppress complaint details",
+        dest    = 'noComplain',
+        default = False,
+        action  = 'store_true')
+
     parserSelf.add_argument("--conciseOutput",
         help    = "provide only the important outputs",
         dest    = 'conciseOutput',
+        default = False,
+        action  = 'store_true')
+
+    parserSelf.add_argument("--eventLoopDebug",
+        help    = "activate a hidden event loop breakpoint",
+        dest    = 'eventLoopDebug',
         default = False,
         action  = 'store_true')
 
@@ -290,6 +314,8 @@ class Pfmongo:
         settings.appsettings.noHashing              = self.args.noHashing
         settings.appsettings.donotFlatten           = self.args.donotFlatten
         settings.appsettings.conciseOutput          = self.args.conciseOutput
+        settings.appsettings.noComplain             = self.args.noComplain
+        settings.appsettings.eventLoopDebug         = self.args.eventLoopDebug
         settings.appsettings.noResponseTruncSize    = self.args.noResponseTruncSize
         if self.args.responseTruncSize:
             settings.mongosettings.responseTruncSize= self.args.responseTruncSize
@@ -412,11 +438,12 @@ class Pfmongo:
 
     async def documentSearch(self, searchFor:list, field:str) \
     -> responseModel.DocumentSearchUsage:
+        """ search whatever is the contextual collection! """
         documentList:responseModel.DocumentSearchUsage = \
                 responseModel.DocumentSearchUsage()
         collection:str  = env.collectionName_get(self.args)
-        if not settings.appsettings.donotFlatten:
-            collection += settings.mongosettings.flattenSuffix
+        # if not settings.appsettings.donotFlatten:
+        #     collection += settings.mongosettings.flattenSuffix
         if not (
             connectCol := await self.connectCollection_do(collection)
         ).info.connected:
@@ -454,6 +481,20 @@ class Pfmongo:
             env.stateFileSave(self.args, DBname, env.DB_stateFileResolve)
         return connect
 
+    async def deleteDB(self, DB:str) \
+    -> responseModel.dbDeleteUsage:
+        dbDelete:responseModel.dbDeleteUsage = \
+                responseModel.dbDeleteUsage()
+        if not (
+            connectDB := await self.connectDB_do(env.DBname_get(self.args))
+        ).info.connected:
+            dbDelete.db = connectDB
+            return dbDelete
+        dbDelete.dbName = DB
+        dbDelete.db     = connectDB
+        self.responseData_log(dbDelete := await self.dbAPI.db_delete(dbDelete))
+        return dbDelete
+
     async def connectCollection(self, collectionName:str) \
     -> responseModel.collectionDesc:
         connectCol:responseModel.collectionDesc = \
@@ -482,6 +523,7 @@ class Pfmongo:
         DBdesc:responseModel.databaseDesc           = await self.connectDB(
                                                         env.DBname_get(self.args)
                                                       )
+
         if not DBdesc.info.connected:
             connectCol.info.error   = DBdesc.info.error
             return connectCol
@@ -538,6 +580,12 @@ class Pfmongo:
             await self.deleteCollection(collection)
         )
 
+    async def deleteDB_do(self, DB:str) \
+    -> responseModel.dbDeleteUsage:
+        return env.deleteDB_failureCheck(
+            await self.deleteDB(DB)
+        )
+
     async def listDocument_do(self, field:str) \
     -> responseModel.DocumentListUsage:
         return env.listDocument_failureCheck(
@@ -557,7 +605,8 @@ class Pfmongo:
         )
 
     async def service(self) -> None:
-        pudb.set_trace()
+        if settings.appsettings.eventLoopDebug:
+            pudb.set_trace()
 
         if not hasattr(self.args, 'do'):
             return
@@ -566,6 +615,7 @@ class Pfmongo:
             case 'showAllDB':           await self.showAllDB_do()
             case 'showAllCollections':  await self.showAllCollections_do()
             case 'connectDB':           await self.connectDB_do(self.args.argument)
+            case 'deleteDB':            await self.deleteDB_do(self.args.argument)
             case 'connectCollection':   await self.connectCollection_do(self.args.argument)
             case 'addDocument':         await self.addDocument_do(self.args.argument)
             case 'deleteDocument':      await self.deleteDocument_do(self.args.argument)
@@ -573,3 +623,6 @@ class Pfmongo:
             case 'listDocument':        await self.listDocument_do(self.args.argument)
             case 'getDocument':         await self.getDocument_do(self.args.argument)
             case 'searchDocument':      await self.searchDocument_do(self.args.argument)
+
+
+
