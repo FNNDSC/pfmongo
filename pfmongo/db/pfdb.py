@@ -52,6 +52,7 @@ class mongoDB():
         collection:responseModel.showAllcollectionsUsage= \
                         responseModel.showAllcollectionsUsage()
         collection.collectionNames  = await self.DB.list_collection_names()
+        collection.status           = True
         return collection
 
     async def connectDB(self, DBname:str) -> dict:
@@ -75,6 +76,11 @@ class mongoDB():
             'error':            dbnames.info.error
         }
         return d_ret
+
+    async def db_delete(self, dbDelete:responseModel.dbDeleteUsage) -> responseModel.dbDeleteUsage:
+        await self.Mongo.drop_database(dbDelete.dbName)
+        dbDelete.status = True
+        return dbDelete
 
     def insert_one_response(self, d_resp:dict) -> dict[bool, dict]:
         d_data:dict         = {
@@ -114,7 +120,7 @@ class mongoDB():
                                 if d['name'] == collection.name]
         for d in ld_collection:
             delete.resp     = await d['object'].document_delete(id)
-            delete.status   = delete.resp['acknowledged']
+            delete.status   = delete.resp['acknowledged'] if delete.resp['deleted_count'] else False
         return delete
 
     async def get_one(self, collection:responseModel.collectionDesc, **kwargs) \
@@ -187,7 +193,7 @@ class mongoDB():
         }
 
     async def collection_delete(self, name:str) -> responseModel.CollectionDeleteUsage:
-        pudb.set_trace()
+        # pudb.set_trace()
         resp:responseModel.CollectionDeleteUsage = responseModel.CollectionDeleteUsage()
         resp.collectionName     = name
         l_names     = [ x['name'] for x in self.ld_collection]
@@ -203,11 +209,12 @@ class mongoDB():
             if lookupOrNone:
                 lookup = lookupOrNone
                 resp.collection = lookup['collection']
-                collectionToRemove:AIO.AsyncIOMotorCollection = \
-                        lookup['object'].d_collection['interface']
-                await collectionToRemove.drop()
-                self.ld_collection.remove(lookup)
-                resp.status     = True
+                if resp.collection.info.elements:
+                    collectionToRemove:AIO.AsyncIOMotorCollection = \
+                            lookup['object'].d_collection['interface']
+                    await collectionToRemove.drop()
+                    self.ld_collection.remove(lookup)
+                    resp.status     = True
         return resp
 
     async def collection_connect(self, name:str) -> responseModel.collectionDesc:
@@ -338,7 +345,7 @@ class mongoCollection():
         # pudb.set_trace()
         d_resp:dict         = {
                 'acknowledged'  : False,
-                'deleted_count' : "-1",
+                'deleted_count' : -1,
                 'database'      : "",
                 'collection'    : "",
                 'error'         : ""
@@ -350,8 +357,8 @@ class mongoCollection():
             resp:results.DeleteResult = await self.collection.delete_one(query)
         except Exception as e:
             d_resp['error']     = '%s' % e
-        d_resp['acknowledged']  =  resp.acknowledged
-        d_resp['deleted_count'] = str(resp.deleted_count)
+        d_resp['acknowledged']  = resp.acknowledged
+        d_resp['deleted_count'] = resp.deleted_count
         d_resp['database']      = self.DB.name
         d_resp['collection']    = self.collection.name
         return d_resp
@@ -400,7 +407,7 @@ class mongoCollection():
                 'find_list'     : [],
                 'error'         : ""
         }
-        pudb.set_trace()
+        # pudb.set_trace()
         await self.create_text_index()
 
         regex = "|".join(search_terms)  # Create a regex pattern that matches any of the search terms
