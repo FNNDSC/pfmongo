@@ -13,6 +13,14 @@ CY  = C.CYAN
 
 from pfmongo.models.dataModel import messageType
 
+def document_get(id:str, options:Namespace) -> int:
+    options.do          = 'getDocument'
+    if env.env_failCheck(options):
+        return 100
+    options.argument    = id
+    read:int            = driver.run(options)
+    return read
+
 @click.command(help=f"""
 {C.CYAN}get{NC} a document from a collection
 
@@ -31,10 +39,4 @@ session state.
 @click.pass_context
 def get(ctx:click.Context, id:str="") -> int:
     # pudb.set_trace()
-    options:Namespace   = ctx.obj['options']
-    options.do          = 'getDocument'
-    if env.env_failCheck(options):
-        return 100
-    options.argument    = id
-    read:int            = driver.run(options)
-    return read
+    return document_get(id, ctx.obj['options'])
