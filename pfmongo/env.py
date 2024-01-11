@@ -8,7 +8,7 @@ from    pfmongo.models.dataModel    import messageType
 from    pfmongo.config              import settings
 from    pfmisc                      import Colors as C
 from    typing                      import Literal
-import  os, sys
+import  os, sys, json
 from    pathlib                     import Path
 import  appdirs
 from    pfmongo.models              import dataModel, responseModel
@@ -17,6 +17,8 @@ try:
     from    .               import __pkg, __version__
 except:
     from pfmongo            import __pkg, __version__
+from    tabulate                    import tabulate
+
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -41,10 +43,14 @@ def complain(
             CL  = C.RED
         case messageType.INFO:
             CL  = C.CYAN
+    if settings.appsettings.noComplain:
+        return code
     if settings.appsettings.logging == dataModel.loggingType.CONSOLE:
-        print(f"\n{CL}{level.name}{NC}")
+        # print(f"\n{CL}{level.name}{NC}")
         if message:
-            print(f"{message}")
+            lines = [[line] for line in message.split('\n')]
+            table = tabulate(lines, headers = [f"{CL}{level.name}{NC}"] , tablefmt = 'fancy_outline')
+            print(f"{table}")
     else:
         print(f'{{"level": "{level.name}"}}')
         pudb.set_trace()
@@ -79,25 +85,40 @@ def sessionUser_notSet() -> int:
                 dataModel.messageType.ERROR)
     return 0
 
-def response_exitCode(var:      responseModel.databaseDesc          |\
-                                responseModel.collectionDesc        |\
-                                responseModel.DocumentAddUsage      |\
-                                responseModel.DocumentSearchUsage   |\
-                                responseModel.DocumentListUsage     |\
+def response_exitCode(var:      responseModel.databaseDesc              |\
+                                responseModel.collectionDesc            |\
+                                responseModel.showAllDBusage            |\
+                                responseModel.showAllcollectionsUsage   |\
+                                responseModel.DocumentAddUsage          |\
+                                responseModel.DocumentGetUsage          |\
+                                responseModel.DocumentDeleteUsage       |\
+                                responseModel.DocumentSearchUsage       |\
+                                responseModel.DocumentListUsage         |\
+                                responseModel.dbDeleteUsage             |\
                                 responseModel.CollectionDeleteUsage
 ) -> int:
     exitCode:int    = 0
     match var:
         case responseModel.databaseDesc() | responseModel.collectionDesc():
-            exitCode    = 0 if var.info.connected else 100
+            exitCode    = 0 if var.info.connected   else 100
+        case responseModel.showAllDBusage():
+            exitCode    = 0 if var.status           else 101
+        case responseModel.showAllcollectionsUsage():
+            exitCode    = 0 if var.status           else 102
         case responseModel.DocumentAddUsage():
-            exitCode    = 0 if var.status else 101
+            exitCode    = 0 if var.status           else 103
+        case responseModel.DocumentGetUsage():
+            exitCode    = 0 if var.status           else 103
+        case responseModel.DocumentDeleteUsage():
+            exitCode    = 0 if var.status           else 104
         case responseModel.DocumentSearchUsage():
-            exitCode    = 0 if var.status else 102
+            exitCode    = 0 if var.status           else 105
         case responseModel.DocumentListUsage():
-            exitCode    = 0 if var.status else 103
+            exitCode    = 0 if var.status           else 106
+        case responseModel.dbDeleteUsage():
+            exitCode    = 0 if var.status           else 107
         case responseModel.CollectionDeleteUsage():
-            exitCode    = 0 if var.status else 104
+            exitCode    = 0 if var.status           else 108
     return exitCode
 
 def databaseOrCollectionDesc_message(var:responseModel.databaseDesc|\
@@ -121,6 +142,31 @@ def documentAddUsage_message(var:responseModel.DocumentAddUsage) -> str:
                   f'Could not add "{name}" (size {size}) to "{db}/{col}"'
     return message
 
+def documentGetUsage_message(var:responseModel.DocumentGetUsage) -> str:
+    # pudb.set_trace()
+    message:str = ""
+    name:str    = var.document['_id']
+    db:str      = var.collection.databaseName
+    col:str     = var.collection.name
+    size:int    = 0
+    if '_size' in var.document:
+        size    = var.document['_size']
+    message     = f'{json.dumps(var.document)}' \
+                    if var.status else \
+                  f'Could not get "{name}" (size {size}) from "{db}/{col}"'
+    return message
+
+def documentDeleteUsage_message(var:responseModel.DocumentDeleteUsage) -> str:
+    message:str = ""
+    name:str    = var.documentName
+    db:str      = var.collection.databaseName
+    col:str     = var.collection.name
+    size:int    = 0
+    message     = f'Successfully deleted "{name}" from "{db}/{col}"' \
+                    if var.status else \
+                  f'Could not delete "{name}" from "{db}/{col}"'
+    return message
+
 def documentSearchUsage_message(var:responseModel.DocumentSearchUsage) -> str:
     message:str  = ""
     message     = f'{var.documentList}' if var.status else ''
@@ -131,6 +177,23 @@ def documentListUsage_message(var:responseModel.DocumentListUsage) -> str:
     message     = f'{var.documentList}' if var.status else ''
     return message
 
+def showAllDBusage_message(var:responseModel.showAllDBusage) -> str:
+    message:str  = ""
+    message     = f'{var.databaseNames}' if var.status else ''
+    return message
+
+def showAllcollectionsUsage_message(var:responseModel.showAllcollectionsUsage) -> str:
+    message:str  = ""
+    message     = f'{var.collectionNames}' if var.status else ''
+    return message
+
+def dbDeleteUsage_message(var:responseModel.dbDeleteUsage) -> str:
+    message:str  = ""
+    message     = f'Successfully deleted database {var.dbName}'   \
+                        if var.status else                                  \
+                  f'Could not delete database {var.dbName}'
+    return message
+
 def collectionDeleteUsage_message(var:responseModel.CollectionDeleteUsage) -> str:
     message:str  = ""
     message     = f'Successfully deleted collection {var.collectionName}'   \
@@ -138,11 +201,16 @@ def collectionDeleteUsage_message(var:responseModel.CollectionDeleteUsage) -> st
                   f'Could not delete collection {var.collectionName}'
     return message
 
-def response_messageDesc(var:   responseModel.databaseDesc          |\
-                                responseModel.collectionDesc        |\
-                                responseModel.DocumentAddUsage      |\
-                                responseModel.DocumentSearchUsage   |\
-                                responseModel.DocumentListUsage     |\
+def response_messageDesc(var:   responseModel.databaseDesc              |\
+                                responseModel.collectionDesc            |\
+                                responseModel.showAllDBusage            |\
+                                responseModel.showAllcollectionsUsage   |\
+                                responseModel.DocumentAddUsage          |\
+                                responseModel.DocumentGetUsage          |\
+                                responseModel.DocumentDeleteUsage       |\
+                                responseModel.DocumentSearchUsage       |\
+                                responseModel.DocumentListUsage         |\
+                                responseModel.dbDeleteUsage             |\
                                 responseModel.CollectionDeleteUsage
 ) -> str:
     message:str     = ""
@@ -151,10 +219,20 @@ def response_messageDesc(var:   responseModel.databaseDesc          |\
             message = databaseOrCollectionDesc_message(var)
         case responseModel.DocumentAddUsage():
             message = documentAddUsage_message(var)
+        case responseModel.DocumentGetUsage():
+            message = documentGetUsage_message(var)
+        case responseModel.DocumentDeleteUsage():
+            message = documentDeleteUsage_message(var)
         case responseModel.DocumentSearchUsage():
             message = documentSearchUsage_message(var)
+        case responseModel.showAllDBusage():
+            message = showAllDBusage_message(var)
+        case responseModel.showAllcollectionsUsage():
+            message = showAllcollectionsUsage_message(var)
         case responseModel.DocumentListUsage():
             message = documentListUsage_message(var)
+        case responseModel.dbDeleteUsage():
+            message = dbDeleteUsage_message(var)
         case responseModel.CollectionDeleteUsage():
             message = collectionDeleteUsage_message(var)
     return message
@@ -316,15 +394,44 @@ def deleteDocument_failureCheck(
     if not usage.status:
         complain(f'''
                 A document delete usage error has occured. This typically means that
-                a duplicate 'id' has been specified. Please check the value of any
+                the passed 'id' was not found in the target collection.
+
+                Please check the value of any
 
                     {CY}--id {GR}<value>{NC}
 
-                 in the {GR}delete{NC} subcommand.
+                in the {GR}delete{NC} subcommand and try again.
                 ''',
                 6,
                 dataModel.messageType.ERROR)
 
+    return usage
+
+def deleteDB_failureCheck(
+        usage:responseModel.dbDeleteUsage
+) -> responseModel.dbDeleteUsage:
+    # pudb.set_trace()
+    if not usage.db.info.connected:
+        complain(f'''
+                A db deletion error has occured. This typically means that
+                the mongo DB service has either not been started or has not been
+                specified correctly.
+
+                Alternatively, the database "{usage.dbName}" does not exist.
+
+                Please check the service settings. Usually you might just
+                need to start the monogo service with:
+
+                        {GR}docker-compose{NC} {CY}up{NC}
+                ''',
+                7,
+                dataModel.messageType.ERROR)
+    elif not usage.status:
+        complain(f'''
+                A database delete usage error has occured. Perhaps the database does not exist?
+                ''',
+                8,
+                dataModel.messageType.ERROR)
     return usage
 
 def deleteCollection_failureCheck(
