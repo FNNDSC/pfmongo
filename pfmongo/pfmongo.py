@@ -96,7 +96,7 @@ package_CLIself = '''
         [--noDuplicates]                                                        \\
         [--donotFlatten]                                                        \\
         [--noResponseTruncSize]                                                 \\
-        [--conciseOutput]                                                       \\
+        [--detailedOutput]                                                      \\
         [--noComplain]                                                          \\
         [--eventLoopDebug]                                                      \\
         [--responseTruncDepth <depth>]                                          \\
@@ -140,8 +140,8 @@ package_argSynopsisSelf = f"""
         If set, suppress the "complain" messages that typically provide more
         information on error or warning events.
 
-        {YL}[--conciseOutput]{NC}
-        If set, only provide concise output relevant to the operation at hand.
+        {YL}[--detailedOutput]{NC}
+        If set, more detailed output result payloads.
 
         {YL}[--eventLoopDebug]{NC}
         If set, activate a hidden "pudb.set_trace()" in the main event loop.
@@ -208,15 +208,21 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
         default = False,
         action  = 'store_true')
 
-    parserSelf.add_argument("--conciseOutput",
-        help    = "provide only the important outputs",
-        dest    = 'conciseOutput',
+    parserSelf.add_argument("--detailedOutput",
+        help    = "provide more detailed result payloads",
+        dest    = 'detailedOutput',
         default = False,
         action  = 'store_true')
 
     parserSelf.add_argument("--eventLoopDebug",
         help    = "activate a hidden event loop breakpoint",
         dest    = 'eventLoopDebug',
+        default = False,
+        action  = 'store_true')
+
+    parserSelf.add_argument("--modelSizesPrint",
+        help    = "on final response, also print internal model size information",
+        dest    = 'modelSizesPrint',
         default = False,
         action  = 'store_true')
 
@@ -313,10 +319,11 @@ class Pfmongo:
         settings.appsettings.allowDuplicates        = self.args.allowDuplicates
         settings.appsettings.noHashing              = self.args.noHashing
         settings.appsettings.donotFlatten           = self.args.donotFlatten
-        settings.appsettings.conciseOutput          = self.args.conciseOutput
+        settings.appsettings.detailedOutput         = self.args.detailedOutput
         settings.appsettings.noComplain             = self.args.noComplain
         settings.appsettings.eventLoopDebug         = self.args.eventLoopDebug
         settings.appsettings.noResponseTruncSize    = self.args.noResponseTruncSize
+        settings.appsettings.modelSizesPrint        = self.args.modelSizesPrint
         if self.args.responseTruncSize:
             settings.mongosettings.responseTruncSize= self.args.responseTruncSize
         if self.args.responseTruncDepth:
