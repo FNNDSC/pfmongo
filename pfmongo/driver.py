@@ -1,15 +1,15 @@
-import  pudb
 from    typing                      import Callable, Optional
+from    argparse                    import Namespace
+import  asyncio
+from    asyncio                     import AbstractEventLoop
+import  json
+import  sys
+from    pfmisc                      import Colors as C
 from    pfmongo                     import pfmongo
 from    pfmongo.models              import responseModel
 from    pfmongo.pfmongo             import Pfmongo  as MONGO
 from    pfmongo.config              import settings
-from    argparse                    import Namespace
-import  asyncio
-from    asyncio                     import AbstractEventLoop
-from    pfmisc                      import Colors as C
-import  json
-import  sys
+import  pudb
 
 from typing import Any, Dict, List, Union, cast
 from pydantic import BaseModel
@@ -56,8 +56,8 @@ def size_limit(obj: Any, limit: int, depth: int) -> NestedDict:
 def model_pruneForDisplay(model:NestedDict) -> NestedDict:
     if not settings.appsettings.noResponseTruncSize:
         model = size_limit(model,
-                             settings.mongosettings.responseTruncSize,
-                             settings.mongosettings.responseTruncDepth)
+                           settings.mongosettings.responseTruncSize,
+                           settings.mongosettings.responseTruncDepth)
     depthUp:int = 1
     while get_size(model) > settings.mongosettings.responseTruncOver:
         model = size_limit(model,
@@ -66,14 +66,14 @@ def model_pruneForDisplay(model:NestedDict) -> NestedDict:
         depthUp += 1
     return model
 
-def model_gets(mongodb:MONGO) -> tuple[Callable[[], str], NestedDict, NestedDict]:
+def model_gets(mongodb:MONGO) -> Callable[[bool], str]:
     """ return the internal response model as a string """
     model:NestedDict            = {}
     modelForDisplay:NestedDict  = {}
 
-    def model_toStr():
+    def model_toStr(addModelSizes:bool = False) -> str:
         respstr:str             = ""
-        if settings.appsettings.conciseOutput:
+        if not settings.appsettings.detailedOutput:
             return mongodb.responseData.message
         try:
             respstr = mongodb.responseData.model_dump_json()
@@ -81,29 +81,84 @@ def model_gets(mongodb:MONGO) -> tuple[Callable[[], str], NestedDict, NestedDict
             respstr = '%s' % mongodb.responseData.model_dump()
         model           = json.loads(respstr)
         modelForDisplay = model_pruneForDisplay(model)
-        if settings.appsettings.conciseOutput:
-            respstr     = mongodb.responseData.message
-        else:
-            respstr     = json.dumps(modelForDisplay)
+        respstr         = json.dumps(modelForDisplay)
+        if addModelSizes:
+            respstr    += json.dumps(
+                            {
+                                'modelSize': {
+                                    'orig' : get_size(model),
+                                    'disp' : get_size(modelForDisplay)
+                                }
+                            }
+           )
         return respstr
 
-    return model_toStr, model, modelForDisplay
+    return model_toStr
 
 def responseData_print(mongodb:MONGO) -> None:
-    model:NestedDict            = {}
-    modelForDisplay:NestedDict  = {}
-    model_asString, model, modelForDisplay     = model_gets(mongodb)
-    print(model_asString())
+    model_asString:Callable[[bool], str] = model_gets(mongodb)
+    print(model_asString(settings.appsettings.modelSizesPrint))
 
-    if settings.appsettings.modelSizesPrint:
-        print(json.dumps(
-            {
-                'modelSize': {
-                    'orig' : get_size(model),
-                    'disp' : get_size(modelForDisplay)
-                }
-            }
-        ))
+def event_process(
+    options:Namespace,
+    f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
+):
+    # Create the mongodb object...
+    mongodb:pfmongo.Pfmongo     = pfmongo.Pfmongo(options)
+
+    def payloadAs(returnType:str = 'int') -> int|pfmongo.Pfmongo:
+        match returnType:
+            case 'int':
+                return mongodb.exitCode
+            case 'obj':
+                return mongodb
+            case _ :
+                return mongodb.exitCode
+
+    def run(**kwargs) -> int|pfmongo.Pfmongo:
+        nonlocal mongodb
+        printResponse:bool      = False
+        returnType:str          = 'int'
+        for k,v in kwargs.items():
+            if k == 'printResponse':    printResponse   = v
+            if k == 'returnType':       returnType      = v
+
+        if not f_syncCallBack:
+            # run it asynchronously..!
+            loop:AbstractEventLoop      = asyncio.get_event_loop()
+            loop.run_until_complete(mongodb.service())
+        else:
+            # else run it with a synchronous callback
+            mongodb     = f_syncCallBack(mongodb)
+        if printResponse:
+            responseData_print(mongodb)
+        return payloadAs(returnType)
+
+    return run
+
+def do(
+    options:Namespace,
+    retType:str,
+    f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
+) -> int | pfmongo.Pfmongo:
+    f = event_process(options, f_syncCallBack)
+    return f(printResponse = True, returnType = retType)
+
+def run_intReturn(
+    options:Namespace,
+    f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
+) -> int:
+    if not isinstance((result := do(options, 'int', f_syncCallBack)), int):
+       raise TypeError("did not receive int as expected")
+    return result
+
+def run_modelReturn(
+    options:Namespace,
+    f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
+) -> pfmongo.Pfmongo:
+    if not isinstance((result := do(options, 'model', f_syncCallBack)), pfmongo.Pfmongo):
+       raise TypeError("did not receive model as expected")
+    return result
 
 def run(
     options:Namespace,
