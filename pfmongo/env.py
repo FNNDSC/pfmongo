@@ -18,12 +18,83 @@ try:
 except:
     from pfmongo            import __pkg, __version__
 from    tabulate                    import tabulate
-
+import  click
+from    io                          import  StringIO
+from    rich.console                import Console
 
 NC  = C.NO_COLOUR
-GR  = C.GREEN
+GR  = C.LIGHT_GREEN
 CY  = C.CYAN
 LR  = C.LIGHT_RED
+LB  = C.LIGHT_PURPLE
+
+
+class CustomFormatter(click.HelpFormatter):
+    def write(self, string):
+        super().write(string)
+
+class CustomGroup(click.Group):
+
+    def format_help(self, ctx, formatter):
+
+        def usage_colorize(usage:str) -> str:
+            usage           = usage.replace(ctx.command_path, f'{GR}{ctx.command_path}{NC}')
+            usage           = usage.replace(str(self.name), f'{CY}{self.name}{NC}')
+            usage           = usage.replace('Usage:', f'{LB}Usage:{NC}')
+            return usage
+
+        def options_colorize(options:str) -> str:
+            if not "Commands:" in options:
+                return options
+            l_options:list  = options.split('Commands:')[1:][0].split('\n')[1:-1]
+            l_cmd:list      = [s.split()[0] for s in l_options]
+            for cmd in l_cmd:
+                options     = options.replace(cmd, f'{CY}{cmd}{NC}', 1)
+            return options
+
+        # Custom formatting logic for group help
+        oformatter:CustomFormatter = CustomFormatter()
+        uformatter:CustomFormatter = CustomFormatter()
+        super().format_options(ctx, oformatter)
+        super().format_usage(ctx, uformatter)
+        usage:str       = usage_colorize(uformatter.getvalue())
+        options:str     = options_colorize(oformatter.getvalue())
+        click.echo(tabulate_message(str(self.help), usage.strip()))
+        click.echo(options)
+
+class CustomCommand(click.Command):
+
+    def format_help(self, ctx, formatter):
+
+        def usage_colorize(usage:str) -> str:
+            usage           = usage.replace(ctx.command_path, f'{GR}{ctx.command_path}{NC}')
+            usage           = usage.replace(str(self.name), f'{CY}{self.name}{NC}')
+            usage           = usage.replace('Usage:', f'{LB}Usage:{NC}')
+            return usage
+
+        def options_colorize(options:str) -> str:
+            if not "Commands:" in options:
+                return options
+            l_options:list  = options.split('Commands:')[1:][0].split('\n')[1:-1]
+            l_cmd:list      = [s.split()[0] for s in l_options]
+            for cmd in l_cmd:
+                options     = options.replace(cmd, f'{CY}{cmd}{NC}', 1)
+            return options
+
+        # Custom formatting logic for group help
+        oformatter:CustomFormatter = CustomFormatter()
+        uformatter:CustomFormatter = CustomFormatter()
+        super().format_options(ctx, oformatter)
+        super().format_usage(ctx, uformatter)
+        usage:str       = usage_colorize(uformatter.getvalue())
+        options:str     = options_colorize(oformatter.getvalue())
+        click.echo(tabulate_message(str(self.help), usage.strip()))
+        click.echo(options)
+
+def tabulate_message(message:str, title:str = "") -> str:
+    lines = [[line] for line in message.split('\n')]
+    table = tabulate(lines, headers = [f"{title}"] , tablefmt = 'fancy_outline')
+    return table
 
 def complain(
         message:str,
@@ -48,9 +119,10 @@ def complain(
     if settings.appsettings.logging == dataModel.loggingType.CONSOLE:
         # print(f"\n{CL}{level.name}{NC}")
         if message:
-            lines = [[line] for line in message.split('\n')]
-            table = tabulate(lines, headers = [f"{CL}{level.name}{NC}"] , tablefmt = 'fancy_outline')
-            print(f"{table}")
+            print(tabulate_message(message, f"{CL}{level.name}{NC}"))
+            # lines = [[line] for line in message.split('\n')]
+            # table = tabulate(lines, headers = [f"{CL}{level.name}{NC}"] , tablefmt = 'fancy_outline')
+            # print(f"{table}")
     else:
         print(f'{{"level": "{level.name}"}}')
         pudb.set_trace()
@@ -189,16 +261,16 @@ def showAllcollectionsUsage_message(var:responseModel.showAllcollectionsUsage) -
 
 def dbDeleteUsage_message(var:responseModel.dbDeleteUsage) -> str:
     message:str  = ""
-    message     = f'Successfully deleted database {var.dbName}'   \
-                        if var.status else                                  \
-                  f'Could not delete database {var.dbName}'
+    message     = f'Successfully deleted database "{var.dbName}"'               \
+                        if var.status else                                      \
+                  f'Could not delete database "{var.dbName}"'
     return message
 
 def collectionDeleteUsage_message(var:responseModel.CollectionDeleteUsage) -> str:
     message:str  = ""
-    message     = f'Successfully deleted collection {var.collectionName}'   \
-                        if var.status else                                  \
-                  f'Could not delete collection {var.collectionName}'
+    message     = f'Successfully deleted collection "{var.collectionName}"'     \
+                        if var.status else                                      \
+                        f'Could not delete collection "{var.collectionName}"'
     return message
 
 def response_messageDesc(var:   responseModel.databaseDesc              |\
