@@ -26,7 +26,7 @@ class App(BaseSettings):
     donotFlatten:bool       = True
     noResponseTruncSize:bool= True
     noComplain:bool         = False
-    conciseOutput:bool      = False
+    detailedOutput:bool     = False
     modelSizesPrint:bool    = False
     eventLoopDebug:bool     = False
 
