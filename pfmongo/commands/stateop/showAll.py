@@ -1,6 +1,7 @@
 import  click
 from    argparse    import  Namespace
 import  pudb
+from    typing      import  Optional, Union, Annotated
 from    pfmisc      import  Colors as C
 from    pfmongo     import  env, pfmongo, driver
 from    pfmongo.models  import responseModel
@@ -39,8 +40,5 @@ This command shows internal program state. It accepts no arguments.
 """)
 @click.pass_context
 def showAll(ctx:click.Context) -> int:
-    #pudb.set_trace()
-    options:Namespace   = ctx.obj['options']
-    options.do          = 'showAllState'
-    showall:int         = driver.run(options, stateResponse_eval)
-    return showall
+    # pudb.set_trace()
+    return driver.run_intReturn(ctx.obj['options'], stateResponse_eval)
