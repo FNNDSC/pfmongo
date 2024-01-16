@@ -29,10 +29,10 @@ def collection_connectToTarget(collection:str, options:Namespace) -> str:
         add.collection_connect(collection, options)
     return currentCol
 
-@click.command(help=f"""
-{C.CYAN}deletecol{NC} delete an entire collection
+@click.command(cls=env.CustomCommand, help=f"""
+Deletes an entire <COLLECTION>
 
-This subcommand removes an entire <collection>.
+Use with care since there is no delete confirmation!
 
 """)
 @click.argument('collection',
