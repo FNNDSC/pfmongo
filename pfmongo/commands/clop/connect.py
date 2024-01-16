@@ -2,14 +2,14 @@ from    argparse    import Namespace
 import  click
 from    pathlib     import Path
 from    pfmisc      import Colors as C
-from    pfmongo     import driver
+from    pfmongo     import driver, env
 
 NC = C.NO_COLOUR
 GR = C.LIGHT_GREEN
 CY = C.CYAN
 
-@click.command(help=f"""
-{CY}<collection>{NC} -- connect to a mongo <collection>
+@click.command(cls=env.CustomCommand, help=f"""
+Connect to a mongo <COLLECTION>
 
 SYNOPSIS
 {GR}connect {CY}<collection>{NC} -- connect to a mongo <collection>
