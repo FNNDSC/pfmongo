@@ -32,7 +32,7 @@ import  appdirs
 import  click
 from    click.formatting    import wrap_text
 
-from    pfmongo.commands    import database, collection, fs, man, state
+from    pfmongo.commands    import database, collection, fs, man, state, document
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -129,5 +129,6 @@ app.add_command(database.database)
 app.add_command(collection.collection)
 app.add_command(fs.fs)
 app.add_command(state.state)
+app.add_command(document.document)
 #app.add_command(man.man)
 
