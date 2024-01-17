@@ -56,6 +56,12 @@ Alternatively, from a cloned version of the repository:
 
         pip3 install -r requirements.txt -U ./
 
+or for development purposes
+
+.. code:: bash
+
+        pip3 install -r requirements.txt -e ./
+
 
 Running
 -------
@@ -72,27 +78,25 @@ Assuming you have `docker` and `docker-compose` on your system, do
 Environment
 ~~~~~~~~~~~
 
-Several environment variables need to be set prior to running ``persair``:
+Several environment variables need to be set prior to using ``pfmongo``:
 
 Linux
 ^^^^^
 
 .. code:: bash
 
-    export MD_DB=tanguro && export DBauthPath=/home/dicom/services/pfair.json &&\
-    export MD_URI=mongodb://localhost:27017 && export ReadWriteKey=tanguro
 
-In the above, the ``/home/dicom/services/pfair.json`` is the full path of the key-file you might have created earlier. Obviously, your location will vary. For the case of Windows, use Windows Powershell and
+    export MD_URI=mongodb://localhost:27017 && export MD_USERNAME=admin && export MD_PASSWORD=admin && export MD_SESSIONUSER=rudolph
 
 Windows
 ^^^^^^^
 
 .. code:: bash
 
-    $env:MD_DB=tanguro
-    $env:DBauthPath=C:\users\me\key.json
+    $env:MD_USERNAME=admin
+    $env:MD_PASSWORD=admin
     $env:MD_URI=mongodb://localhost:27017
-    $env:ReadWriteKey=tanguro
+    $env:MD_SESSIONUER=rudolph
 
 
 Command line arguments
@@ -100,35 +104,18 @@ Command line arguments
 
 .. code:: console
 
-        [--mongodbinit <init.json>]
-        The mongodb initialization file.
+    pfmongo --help
 
-        [--version]
-        If specified, print app name/version.
 
-        [--man]
-        If specified, print this help/man page.
-
-        [--useDB <DBname>]
-        Use the data base called <DBname>.
-
-        [--useCollection <collectionName>]
-        Use the collection called <collectionName>.
-
-        [--addDocument <document.json>]
-        Add the <document.json> to the <DBname>/<collectionName>.
-
-        [--searchOn <searchExp>]
-        Search for <searchExp> (see below) in the <DBname>/<collectionName>.
-        
 Examples
 --------
 
-- Coming soon:
-
 .. code:: bash
 
-  pfmongo --addDocument data.json
+  alias mdb='pfmongo'
+  mdb database connect PACSDCM
+  mdb collection connect MRN
+  mdb document add --file examples/lld.json --id lld.json
 
 
 *-30-*
