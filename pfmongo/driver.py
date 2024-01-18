@@ -140,7 +140,7 @@ def do(
     options:Namespace,
     retType:str,
     f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
-) -> int | pfmongo.Pfmongo:
+) -> int | responseModel.mongodbResponse:
     f = event_process(options, f_syncCallBack)
     return f(printResponse = True, returnType = retType)
 
