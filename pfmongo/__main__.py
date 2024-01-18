@@ -7,7 +7,7 @@
 #                        dev@babyMRI.org
 #
 
-__version__ = "0.9.93"
+__version__ = "0.9.94"
 
 import sys
 

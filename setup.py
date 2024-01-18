@@ -32,7 +32,6 @@ if 10 * sys.version_info[0]  + sys.version_info[1] < 35:
 def readme():
     with open('README.rst') as f:
         return f.read()
-
 setup(
       name             =   'pfmongo',
       version          =   get_version('pfmongo/__main__.py'),
@@ -50,7 +49,7 @@ setup(
                             'pfmongo/db',
                             'pfmongo/config',
                             'pfmongo/models'],
-      install_requires  = parse_requirements('requirements.txt', session='hack')
+      install_requires  = parse_requirements('requirements.txt', session='hack'),
       data_files        =   [
           ('', ['requirements.txt']),
         ],
