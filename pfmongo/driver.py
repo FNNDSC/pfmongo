@@ -106,16 +106,16 @@ def event_process(
     # Create the mongodb object...
     mongodb:pfmongo.Pfmongo     = pfmongo.Pfmongo(options)
 
-    def payloadAs(returnType:str = 'int') -> int|pfmongo.Pfmongo:
+    def payloadAs(returnType:str = 'int') -> int|responseModel.mongodbResponse:
         match returnType:
             case 'int':
                 return mongodb.exitCode
             case 'model':
-                return mongodb
+                return mongodb.responseData
             case _ :
                 return mongodb.exitCode
 
-    def run(**kwargs) -> int|pfmongo.Pfmongo:
+    def run(**kwargs) -> int|responseModel.mongodbResponse:
         nonlocal mongodb
         printResponse:bool      = False
         returnType:str          = 'int'
@@ -155,8 +155,10 @@ def run_intReturn(
 def run_modelReturn(
     options:Namespace,
     f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
-) -> pfmongo.Pfmongo:
-    if not isinstance((result := do(options, 'model', f_syncCallBack)), pfmongo.Pfmongo):
+) -> responseModel.mongodbResponse:
+    if not isinstance((result := do(
+            options, 'model', f_syncCallBack)),
+            responseModel.mongodbResponse):
        raise TypeError("did not receive model as expected")
     return result
 
