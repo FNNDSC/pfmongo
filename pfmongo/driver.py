@@ -110,7 +110,7 @@ def event_process(
         match returnType:
             case 'int':
                 return mongodb.exitCode
-            case 'obj':
+            case 'model':
                 return mongodb
             case _ :
                 return mongodb.exitCode
