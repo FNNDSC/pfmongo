@@ -50,7 +50,7 @@ setup(
                             'pfmongo/db',
                             'pfmongo/config',
                             'pfmongo/models'],
-      install_reqs = parse_requirements('requirements.txt', session='hack')
+      install_requires  = parse_requirements('requirements.txt', session='hack')
       data_files        =   [
           ('', ['requirements.txt']),
         ],
