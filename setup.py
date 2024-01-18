@@ -1,6 +1,7 @@
 import  sys
 import  re
-from    setuptools import setup
+from    setuptools          import setup
+from    pip._internal.req   import parse_requirements
 
 _version_re = re.compile(r"(?<=^__version__ = (\"|'))(.+)(?=\"|')")
 
@@ -18,9 +19,9 @@ def get_version(rel_path: str) -> str:
             raise RuntimeError(f'Could not find __version__ in {rel_path}')
         return version.group(0)
 
-requirements    = []
-with open('requirements.txt') as f:
-    requirements = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith('#')]
+# requirements    = []
+# with open('requirements.txt') as f:
+#     requirements = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith('#')]
 
 
 # Make sure we are running python3.5+
@@ -49,7 +50,10 @@ setup(
                             'pfmongo/db',
                             'pfmongo/config',
                             'pfmongo/models'],
-      install_requires =   requirements,
+      install_reqs = parse_requirements('requirements.txt', session='hack')
+      data_files        =   [
+          ('', ['requirements.txt']),
+        ],
       entry_points={
           'console_scripts': [
               'pfmongo = pfmongo.__main__:main'
