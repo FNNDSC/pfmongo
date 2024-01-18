@@ -1,7 +1,6 @@
 import  sys
 import  re
 from    setuptools          import setup
-from    pip._internal.req   import parse_requirements
 
 _version_re = re.compile(r"(?<=^__version__ = (\"|'))(.+)(?=\"|')")
 
@@ -23,13 +22,10 @@ requirements    = []
 with open('requirements.txt') as f:
     requirements = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith('#')]
 
-
 # Make sure we are running python3.5+
 if 10 * sys.version_info[0]  + sys.version_info[1] < 35:
     sys.exit("Sorry, only Python 3.5+ is supported.")
 
-# Parse the requirements from the requirements.txt file
-#install_requires = [str(req) for req in parse_requirements('requirements.txt', session='hack')]
 
 def readme():
     with open('README.rst') as f:
