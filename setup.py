@@ -19,9 +19,9 @@ def get_version(rel_path: str) -> str:
             raise RuntimeError(f'Could not find __version__ in {rel_path}')
         return version.group(0)
 
-# requirements    = []
-# with open('requirements.txt') as f:
-#     requirements = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith('#')]
+requirements    = []
+with open('requirements.txt') as f:
+    requirements = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith('#')]
 
 
 # Make sure we are running python3.5+
@@ -29,7 +29,7 @@ if 10 * sys.version_info[0]  + sys.version_info[1] < 35:
     sys.exit("Sorry, only Python 3.5+ is supported.")
 
 # Parse the requirements from the requirements.txt file
-install_requires = [str(req) for req in parse_requirements('requirements.txt', session='hack')]
+#install_requires = [str(req) for req in parse_requirements('requirements.txt', session='hack')]
 
 def readme():
     with open('README.rst') as f:
@@ -52,7 +52,7 @@ setup(
                             'pfmongo/db',
                             'pfmongo/config',
                             'pfmongo/models'],
-      install_requires  = install_requires, 
+      install_requires  = requirements,
       data_files        =   [
           ('', ['requirements.txt']),
         ],
