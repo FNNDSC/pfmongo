@@ -39,6 +39,7 @@ NC              = C.NO_COLOUR
 YL              = C.YELLOW
 GR              = C.GREEN
 CY              = C.CYAN
+PR              = C.PURPLE
 LOG             = logger.debug
 logger_format   = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> │ "
@@ -54,23 +55,27 @@ logger.add(sys.stderr, format=logger_format)
 package_description:str = f"""
                         {YL}pfmongo{NC} -- mongo for rest of us.
 
-    This `project` is a somewhat ideosyncratic class interface to a mongodb.
+    This system is a somewhat ideosyncratic interface to a {PR}mongodb{NC} server.
     It is both a CLI client and supporting python module, following the "pf"
     (see elsewhere) design pattern.
 
-    The basic idea is to provide a class-based set of operations to simplify
-    working with data (documents) in a mongodb. For added happiness, a "file
-    system-y" metaphor complete with supporting commands that present the
-    database as a file system is also provided.
+    The basic idea is to provide a subcommand based set of operations to
+    simplify working with data (documents) in a {PR}mongodb{NC}.
 
-    From the CLI, subcommands are organized into three main groupings:
+    For added happiness, a "file system-y" metaphor complete with supporting
+    commands that present the database as a file system is also provided.
 
-        {GR}fs{NC} for 'filesystem' type commands,
-        {GR}database{NC} for 'database' type commands,
-        {GR}collection{NC} for 'collection' type commands
+    In addtion, see the {PR}pfmdb{NC} FastAPI-based system that provides a full
+    REST interface to {YL}pfmongo{NC}.
 
-    Use {YL}pfmongo {GR}<grouping> {CY}--help{NC} for <grouping> specific
-    help. For example
+    From the CLI, subcommands are organized into four main groupings:
+
+        {GR}fs{NC}          for 'filesystem' type commands,
+        {GR}database{NC}    for 'database' type commands,
+        {GR}collection{NC}  for 'collection' type commands,
+        {GR}document{NC}    for 'document' type commands
+
+    Use {YL}pfmongo {GR}<grouping> {CY}--help{NC} for <grouping> specific help. For example
 
         {YL}pfmongo {GR}fs {CY}--help{NC}
 
@@ -287,6 +292,17 @@ def parser_JSONinterpret(parser, d_JSONargs) -> tuple:
         l_args.append('--%s' % k)
         l_args.append('%s' % v)
     return parser_interpret(parser, l_args)
+
+def options_initialize() -> Namespace:
+    """ initialize a set of "options" with defaults """
+    options:Namespace       = Namespace()
+    parser:ArgumentParser   = parser_setup(
+                                "A client parser for pfmongo",
+                                add_help = False
+                            )
+    options, extra          = parser_interpret(parser, [])
+    env.env_statePathSet(options)
+    return options
 
 def date_toUNIX(str_date:str) -> int:
     ret:int     = 0
