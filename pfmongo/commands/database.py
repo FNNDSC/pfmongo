@@ -1,9 +1,7 @@
-from    pathlib     import  Path
-from    argparse    import  Namespace
-from    typing      import  Optional
 from    pfmisc      import  Colors  as C
 import  click
 import  pudb
+from    pfmongo                 import env
 from    pfmongo.commands.dbop   import connect, showAll, deleteDB
 
 
@@ -11,10 +9,12 @@ NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
 
-@click.group(help=f"""
-             {GR}database {CY}<cmd>{NC} -- database commands
+@click.group(cls = env.CustomGroup, help=f"""
+database level commands: show, connect, delete
 
-This command group provides mongo "database" level commands.
+This command group provides mongo "database" level commands, allowing
+connection to a new database, deletion of an existing database, and
+listing all existing databases.
 
 """)
 def database():
