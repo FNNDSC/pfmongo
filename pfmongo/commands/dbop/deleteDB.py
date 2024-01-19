@@ -60,11 +60,3 @@ Use with care! No confirmation is asked by the system!
 def deleteDB(ctx:click.Context, database:str) -> int:
     # pudb.set_trace()
     return DBdel_asInt(options_add(database, ctx.obj['options']))
-    # options:Namespace   = ctx.obj['options']
-    # if env.env_failCheck(options):
-    #     return 100
-    # DB_connectToTarget(db, options)
-    # options.do          = 'deleteDB'
-    # options.argument    = db
-    # rem:int             = driver.run(options)
-    # return rem
