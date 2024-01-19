@@ -9,6 +9,7 @@
 
 __version__ = "0.9.99"
 
+from os.path import normpath
 import sys
 
 from    pfmongo             import pfmongo
@@ -93,7 +94,7 @@ def main(argv:list[str]=[]) -> int:
     newargv:list[str]           = sysargv_revamp(extra)
     return(app())
 
-@click.group(help = pfmongo.package_description)
+@click.group(cls = env.CustomGroup, help = pfmongo.package_description)
 @click.option('--man',
               is_flag   = True,
               help      = 'show more detail about core OPTIONS')
