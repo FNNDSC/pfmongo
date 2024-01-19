@@ -1,29 +1,35 @@
-from    argparse    import Namespace
+from    argparse        import Namespace
 import  click
-from    pathlib     import Path
-from    pfmisc      import Colors as C
-from    pfmongo     import driver
+from    pfmisc          import Colors as C
+from    pfmongo         import driver, env
+from    pfmongo.models  import responseModel
+import  pudb
 
 NC = C.NO_COLOUR
 GR = C.LIGHT_GREEN
 CY = C.CYAN
 
-def connectTo(database:str, options:Namespace) -> int:
+def options_add(database:str, options:Namespace) -> Namespace:
     options.do          = 'connectDB'
     options.argument    = database
-    return driver.run(options)
+    return options
 
-@click.command(help=f"""
-               {GR}connect {CY}<database>{NC} -- connect to a mongo <database>
+def connectTo_asInt(options:Namespace) -> int:
+    return driver.run_intReturn(options)
 
-This command connects to a mongo database. A mongodb "server" can contain
-several "databases".
+def connectTo_asModel(options:Namespace) -> responseModel.mongodbResponse:
+    return driver.run_modelReturn(options)
+
+@click.command(cls = env.CustomCommand, help=f"""
+{GR}DATABASE{NC} -- associate with a database context.
+
+This command connects to a mongo database called {CY}DATABASE{NC}.
+A mongodb "server" can contain several "databases". A {CY}DATABASE{NC}
+is the lowest (or first) level of organization in monogodb.
 
 """)
 @click.argument('database',
                 required = True)
 @click.pass_context
 def connect(ctx:click.Context, database:str) -> int:
-    # pudb.set_trace()
-    options:Namespace   = ctx.obj['options']
-    return connectTo(database, options)
+    return connectTo_asInt(options_add(database, ctx.obj['options']))
