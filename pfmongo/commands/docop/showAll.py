@@ -1,25 +1,36 @@
 import  click
-import  pudb
-from    pfmongo         import  driver
+from    pfmongo         import  driver, env
 from    argparse        import  Namespace
 from    pfmisc          import  Colors as C
+from    pfmongo.models  import  responseModel
+import  pudb
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
+PL  = C.PURPLE
+YL  = C.YELLOW
 
-def collection_list(field:str, options:Namespace) -> int:
+def options_add(field:str, options:Namespace) -> Namespace:
     options.do          = 'listDocument'
     options.argument    = field
-    ls:int              = driver.run(options)
-    return ls
+    return options
 
-@click.command(help=f"""
-{C.CYAN}showAll{NC} documents in a collection.
+def showAll_asInt(options:Namespace) -> int:
+    return driver.run_intReturn(options)
 
-The "location" is defined by the core parameters, 'useDB' and 'useCollection'
-which are typically defined in the CLI, in the system environment, or in the
-session state.
+def showAll_asModel(options:Namespace) -> responseModel.mongodbResponse:
+    return driver.run_modelReturn(options)
+
+@click.command(cls = env.CustomCommand, help=f"""
+list {PL}documents{NC} in a collection.
+
+SYNPOSIS
+{CY}showall {YL}[--field <field>]{NC}
+
+DESC
+List all the documents in a collection, showing the contents of the
+document's {YL}<field>{NC} key (by default this is '{YL}_id{NC}').
 
 """)
 @click.option('--field',
@@ -30,5 +41,4 @@ session state.
 @click.pass_context
 def showAll(ctx:click.Context, field:str) -> int:
     # pudb.set_trace()
-    options:Namespace   = ctx.obj['options']
-    return collection_list(field, options)
+    return showAll_asInt(options_add(field, ctx.obj['options']))
