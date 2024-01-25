@@ -1,18 +1,27 @@
 import  click
 import  pudb
-from    pfmongo         import  driver
-from    argparse        import  Namespace
-from    pfmongo         import  env
+from    pfmongo                 import  driver, env
+import  pfmongo.pfmongo
+from    argparse                import  Namespace
 import  json
-from    typing          import  Union
-from    pfmisc          import  Colors as C
-from    pfmongo.config  import  settings
+from    pfmisc                  import  Colors as C
+from    pfmongo.config          import  settings
+from    pfmongo.models          import  responseModel
+from    typing                  import  Tuple, cast, Callable
+from    pfmongo.commands.clop   import connect
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
+PL  = C.PURPLE
+YL  = C.YELLOW
 
 from pfmongo.models.dataModel import messageType
+
+def options_add(file:str, id:str, options:Namespace) -> Namespace:
+    options.do          = 'addDocument'
+    options.argument    = {"file": file, "id": id}
+    return options
 
 def flatten_dict(data:dict, parent_key:str='', sep:str='/') -> dict:
     flattened:dict = {}
@@ -57,62 +66,87 @@ def jsonFile_intoDictRead(filename:str) -> dict[bool,dict]:
         d_json['data']      = str(e)
     return d_json
 
-def upload(d_data:dict, options:Namespace, id:str="") -> int:
-    if id:
-        d_data['_id']   = id
-    d_data['_size']     = driver.get_size(d_data)
-    options.do          = 'addDocument'
-    options.argument    = d_data
-    do:int              = driver.run(options)
-    return do
+def prepCollection_forDocument(
+        options:Namespace,
+        connectCollection:Callable[[Namespace],Namespace],
+        document:dict) -> Callable[..., int|responseModel.mongodbResponse]:
+    document['_date']   = pfmongo.pfmongo.timenow()
+    document['_owner']  = settings.mongosettings.MD_sessionUser
+    document['_size']   = driver.get_size(document)
+    return driver.event_setup(
+            driver.settmp(options,
+                [
+                    {'collectionName':  connectCollection(options).collectionName},
+                    {'argument':        document}
+                ]
+            )
+    )
 
-def currentCollection_getName(options:Namespace) -> str:
-    currentCol:str      = env.collectionName_get(options)
-    if currentCol.endswith(settings.mongosettings.flattenSuffix):
-        currentCol = currentCol.rstrip(settings.mongosettings.flattenSuffix)
-        collection_connect(currentCol, options)
-    return currentCol
+def add_asType(
+        document:dict, options:Namespace, modelReturnType:str
+) -> int | responseModel.mongodbResponse:
+    # First save to the shadow collection:
+    if not settings.appsettings.donotFlatten:
+        run = prepCollection_forDocument(
+                options, connect.shadowCollection_getAndConnect, flatten_dict(document)
+        )
+        if (saveShadowFail  := cast(int, run(printResponse = True, returnType = 'int'))):
+            return saveShadowFail
+    # Now save to the primary collection
+    run = prepCollection_forDocument(
+            options, connect.baseCollection_getAndConnect, document
+    )
+    return run(printResponse = True, returnType = modelReturnType)
 
-def shadowCollection_getName(options:Namespace) -> str:
-    sourceCol:str       = env.collectionName_get(options)
-    shadowSuffix:str    = settings.mongosettings.flattenSuffix
-    shadowCol:str       = sourceCol + shadowSuffix
-    collection_connect(shadowCol, options)
-    return shadowCol
-
-def collection_connect(collection:str, options:Namespace) -> int:
-    options.do          = 'connectCollection'
-    options.argument    = collection
-    return driver.run(options)
-
-def add_do(document:dict, id:str, options:Namespace) -> int:
-    thisCollection:str      = currentCollection_getName(options)
-    # pudb.set_trace()
-    saveFail:int            = upload(document, options, id)
-    if settings.appsettings.donotFlatten or saveFail:
-        return saveFail
-    # pudb.set_trace()
-    options.collectionName  = shadowCollection_getName(options)
-    saveFail                = upload(flatten_dict(document), options, id)
-    options.collectionName  = thisCollection
-    connect:int             = collection_connect(thisCollection, options)
-    return saveFail
-
-def document_add(documentFile:str, id:str, options:Namespace) -> int:
-    d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(documentFile))
+def setup(options:Namespace) -> Tuple[int, dict]:
     d_data:dict         = {}
+    if env.env_failCheck(options):
+        return 100, d_data
+    d_dataOK:dict|bool  = env_OK(options, jsonFile_intoDictRead(options.argument['file']))
     if not d_dataOK:
-        return 100
-    if isinstance(d_dataOK, dict):
-        d_data          = d_dataOK
-    saveFail:int        = add_do(d_data, id, options)
-    return saveFail
+        return 100, d_data
+    if not isinstance(d_dataOK, dict):
+        return 101, d_data
+    d_data          = d_dataOK
+    if len(options.argument['id']):
+        d_data['_id']   = options.argument['id']
+    return 0, d_data
 
-@click.command(help=f"""
-{C.CYAN}add{NC} a document (read from the filesystem) to a collection
+def earlyFailure(
+        failData:Tuple[int,dict], returnType:str = "int"
+) -> int|responseModel.mongodbResponse:
+    reti:int        = failData[0]
+    retm:responseModel.mongodbResponse  = responseModel.mongodbResponse()
+    retm.message    = f'A setup failure of return {reti} occurred'
+    match returnType:
+        case 'int':     return reti
+        case 'model':   return retm
+        case _:         return reti
 
-This subcommand accepts a document filename (assumed to contain JSON
-formatted contents) and stores the contents in mongo.
+def documentAdd_asType(
+        options:Namespace, returnType:str="int"
+) -> int | responseModel.mongodbResponse:
+    failOrOK:Tuple[int, dict]           = (-1, {})
+    if (failOrOK:=setup(options))[0]:
+        return earlyFailure(failOrOK, returnType)
+    d_data:dict     = failOrOK[1]
+    return add_asType(d_data, options, returnType)
+
+def documentAdd_asInt(options:Namespace) -> int:
+    return cast(int, documentAdd_asType(options, 'int'))
+
+def documentAdd_asModel(options:Namespace) -> responseModel.mongodbResponse:
+    return cast(responseModel.mongodbResponse, documentAdd_asType(options, 'model'))
+
+@click.command(cls = env.CustomCommand, help=f"""
+read a {PL}document{NC} from the filesystem and add to a collection
+
+SYNOPSIS
+{CY}add {YL}--file <filename> [--id <value>]{NC}
+
+DESC
+This subcommand accepts a document {YL}filename{NC} (assumed to contain JSON
+formatted contents) and stores the contents in the associated {YL}COLLECTION{NC}.
 
 A "shadow" document with a flat dataspace is also added to a "shadow"
 collection. This "shadow" document facilitates searching and is kept
@@ -126,13 +160,13 @@ session state.
 @click.option('--file',
     type  = str,
     help  = \
-    "The name of a JSON formatted file to save to the collection in the database")
+    "The name of a JSON formatted file to save to a COLLECTION in a DATABASE.")
 @click.option('--id',
     type  = str,
     help  = \
-    "If specified, set the 'id' in the mongo collection to the passed string",
+    "If specified, set the 'id' in the mongo collection to the passed string.",
     default = '')
 @click.pass_context
 def add(ctx:click.Context, file:str, id:str="") -> int:
     # pudb.set_trace()
-    return document_add(file, id, ctx.obj['options'])
+    return documentAdd_asInt(options_add(file, id, ctx.obj['options']))
