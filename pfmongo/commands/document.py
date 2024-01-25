@@ -1,6 +1,4 @@
-from    pathlib     import  Path
-from    argparse    import  Namespace
-from    typing      import  Optional
+from    pfmongo     import  env
 from    pfmisc      import  Colors  as C
 from    pfmongo.commands.docop import add, delete, search, showAll, get
 import  click
@@ -10,8 +8,8 @@ NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
 
-@click.group(help=f"""
-             {GR}document{CY} <cmd>{NC} -- document commands
+@click.group(cls = env.CustomGroup, help=f"""
+commands suitable for documents: {GR}add, delete, search, showall, get{NC}
 
 This command group provides mongo "document" level commands.
 
