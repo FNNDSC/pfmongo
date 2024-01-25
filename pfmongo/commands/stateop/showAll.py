@@ -32,13 +32,24 @@ def mongo_responseEmbed(state:responseModel.stateResponse) \
         }, f"{state.database}/{state.collection}"
     )
 
-@click.command(help=f"""
-               {GR}showall{NC} -- show internal state values
+def showAll_asInt(options:Namespace) -> int:
+    return driver.run_intReturn(options, stateResponse_eval)
 
+def showAll_asModel(options:Namespace) -> responseModel.mongodbResponse:
+    return driver.run_modelReturn(options, stateResponse_eval)
+
+@click.command(cls = env.CustomCommand, help=f"""
+show internal {GR}state{NC} values
+
+SYNPOSIS
+{CY}showall{NC}
+
+DESC
 This command shows internal program state. It accepts no arguments.
 
 """)
 @click.pass_context
 def showAll(ctx:click.Context) -> int:
     # pudb.set_trace()
-    return driver.run_intReturn(ctx.obj['options'], stateResponse_eval)
+    return showAll_asInt(ctx.obj['options'])
+    # return driver.run_intReturn(ctx.obj['options'], stateResponse_eval)
