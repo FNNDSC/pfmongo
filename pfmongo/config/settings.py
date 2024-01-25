@@ -23,7 +23,8 @@ class App(BaseSettings):
     logging:dataModel.loggingType = dataModel.loggingType.CONSOLE
     allowDuplicates:bool    = True
     noHashing:bool          = True
-    donotFlatten:bool       = True
+    donotFlatten:bool       = False
+    beQuiet:bool            = False
     noResponseTruncSize:bool= True
     noComplain:bool         = False
     detailedOutput:bool     = False
