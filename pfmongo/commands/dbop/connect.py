@@ -8,6 +8,8 @@ import  pudb
 NC = C.NO_COLOUR
 GR = C.LIGHT_GREEN
 CY = C.CYAN
+YL = C.YELLOW
+PL = C.PURPLE
 
 def options_add(database:str, options:Namespace) -> Namespace:
     options.do          = 'connectDB'
@@ -21,12 +23,18 @@ def connectTo_asModel(options:Namespace) -> responseModel.mongodbResponse:
     return driver.run_modelReturn(options)
 
 @click.command(cls = env.CustomCommand, help=f"""
-{GR}DATABASE{NC} -- associate with a database context.
+associate a context with {PL}DATABASE{NC}
 
-This command connects to a mongo database called {CY}DATABASE{NC}.
-A mongodb "server" can contain several "databases". A {CY}DATABASE{NC}
+SYNOPSIS
+{CY}connect {YL}<DATABASE>{NC}
+
+DESC
+This command connects to a mongo database called {YL}DATABASE{NC}.
+A mongodb "server" can contain several "databases". A {YL}DATABASE{NC}
 is the lowest (or first) level of organization in monogodb.
 
+In order to do any operations on data, you first MUST connect to
+a {PL}DATABASE{NC}.
 """)
 @click.argument('database',
                 required = True)
