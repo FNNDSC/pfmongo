@@ -5,18 +5,28 @@ from    typing                  import  Any
 import  readline
 import  sys
 from    tabulate                import tabulate
+from    pfmongo                 import pfmongo, __main__
 from    pfmongo                 import driver, env
 from    argparse                import Namespace
 from    pfmisc                  import Colors as C
 from    pfmongo.models          import responseModel
 from    typing                  import cast
 from    argparse                import Namespace
-from    pfmongo.commands.state  import showAll
+from    pfmongo.commands.state  import showAll as state
+from    click.testing           import CliRunner
+import  copy
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
 YL  = C.YELLOW
+
+def prompt_get(options:Namespace) -> str:
+    localoptions:Namespace              = copy.deepcopy(options)
+    localoptions.beQuiet                = True
+    model:responseModel.mongodbResponse = state.showAll_asModel(localoptions)
+    prompt                              = f"/{model.message}{GR}>$ {NC}"
+    return prompt
 
 @click.command(cls = env.CustomCommand, help="""
 shell interface for running commands
@@ -42,17 +52,15 @@ Type {YL}--help{NC} for a list of commands.
 Type {YL}quit{NC} to return to the system.
           """)
 
-    pudb.set_trace()
+    # pudb.set_trace()
     options:Namespace                   = ctx.obj['options']
-    options.beQuiet                     = True
+    runner                              = CliRunner()
+    # App                                 = __main__.app()
     model:responseModel.mongodbResponse = responseModel.mongodbResponse()
-    prompt                              = ""
     while True:
-        model       = showAll.showAll_asModel(options)
-        prompt      = f'/{model.message}{GR}>$ {NC}'
-        command:str = input(prompt)
+        command:str = input(prompt_get(options))
         if 'quit' in command.lower() or 'exit' in command.lower():
             sys.exit(0)
-        else:
-            pass
+        ret = runner.invoke(__main__.app, command.split(), color = True)
+        print(ret.output)
 
