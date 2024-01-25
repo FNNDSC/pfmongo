@@ -143,6 +143,7 @@ class mongoDB():
 
     async def listDocs(self, collection:responseModel.collectionDesc, **kwargs) \
     -> responseModel.DocumentListUsage:
+        """ Note: no differentiation between failed call and empty list """
         docs:responseModel.DocumentListUsage   = responseModel.DocumentListUsage()
         field:str  = ""
         for k, v in kwargs.items():
@@ -157,6 +158,7 @@ class mongoDB():
         if docs.status:
             docs.documentList = docs.resp['find_list']
             docs.resp['find_list']  = 'Listed successfully'
+        docs.status         = True
         return docs
 
     async def searchDocs(self, collection:responseModel.collectionDesc, **kwargs) \
@@ -209,7 +211,7 @@ class mongoDB():
             if lookupOrNone:
                 lookup = lookupOrNone
                 resp.collection = lookup['collection']
-                if resp.collection.info.elements:
+                if not resp.collection.info.error:
                     collectionToRemove:AIO.AsyncIOMotorCollection = \
                             lookup['object'].d_collection['interface']
                     await collectionToRemove.drop()
@@ -330,7 +332,8 @@ class mongoCollection():
         if self.addHashToDocument:
             d_data          = self.hash_addToDocument(d_data)
         if await self.is_duplicate(d_data) and not self.allowDuplicates:
-           d_resp['error']  = 'Duplicate document hash found.'
+           d_resp['error']          = 'Duplicate document hash found.'
+           d_resp['inserted_id']    = d_data['_id']
         else:
             resp:results.InsertOneResult    = results.InsertOneResult(None, False)
             try:
@@ -417,7 +420,7 @@ class mongoCollection():
                     d_resp['find_list'].append(doc['_id'])
                     break
 
-        if len(d_resp['find_list']):
+        if not len(d_resp['error']):
             d_resp['acknowledged']  = True
         return d_resp
 
