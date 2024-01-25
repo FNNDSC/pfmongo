@@ -4,36 +4,23 @@ import logging
 logging.disable(logging.CRITICAL)
 
 # System imports
-import      os
 import      sys
-import      getpass
-import      argparse
-import      json
-import      pprint
-import      csv
 import      logging
 import      datetime
 
-import      asyncio
-import      aiohttp
-from        aiohttp             import ClientResponse
+from        argparse            import Namespace, ArgumentParser
+from        argparse            import RawTextHelpFormatter
+from        loguru              import logger
 
-from        argparse            import  Namespace, ArgumentParser
-from        argparse            import  RawTextHelpFormatter
-from        loguru              import  logger
-
-from        pathlib             import  Path
-from        pfmisc              import  Colors as C
+from        pfmisc              import Colors as C
 import      pudb
 from        typing              import Any, Callable, Optional
-from        pydantic            import HttpUrl
 
 from        pfmongo.config      import settings
 from        pfmongo.db          import pfdb
 from        pfmongo.models      import responseModel
 from        pfmongo             import env
 
-from click.formatting           import wrap_text
 
 NC              = C.NO_COLOUR
 YL              = C.YELLOW
@@ -68,18 +55,19 @@ package_description:str = f"""
     In addtion, see the {PR}pfmdb{NC} FastAPI-based system that provides a full
     REST interface to {YL}pfmongo{NC}.
 
-    From the CLI, subcommands are organized into four main groupings:
+    From the CLI, subcommands are organized the following groupings:
 
         {GR}fs{NC}          for 'filesystem' type commands,
         {GR}database{NC}    for 'database' type commands,
         {GR}collection{NC}  for 'collection' type commands,
         {GR}document{NC}    for 'document' type commands
+        {GR}pmsh{NC}        the pfmongo REPL 'shell'
 
     Use {YL}pfmongo {GR}<grouping> {CY}--help{NC} for <grouping> specific help. For example
 
-        {YL}pfmongo {GR}fs {CY}--help{NC}
+        {YL}pfmongo {GR}document {CY}--help{NC}
 
-    for help on the file system commands.
+    for help on the {GR}document{NC} contextual commands.
 
 """
 
@@ -103,6 +91,7 @@ package_CLIself = '''
         [--noResponseTruncSize]                                                 \\
         [--detailedOutput]                                                      \\
         [--noComplain]                                                          \\
+        [--beQuiet]                                                             \\
         [--eventLoopDebug]                                                      \\
         [--responseTruncDepth <depth>]                                          \\
         [--responseTruncSize <size>]                                            \\
@@ -144,6 +133,13 @@ package_argSynopsisSelf = f"""
         {YL}[--noComplain]{NC}
         If set, suppress the "complain" messages that typically provide more
         information on error or warning events.
+
+        {YL}[--beQuiet]{NC}
+        If set, suppress all output to console. Note that "models" still contain
+        data and the contents of the model '.message' is the string that would
+        typically have been printed. This option is mostly useful if some other
+        process is using pfmongo and wants to prevent pfmongo itself from polluting
+        the console.
 
         {YL}[--detailedOutput]{NC}
         If set, more detailed output result payloads.
@@ -210,6 +206,12 @@ def parser_setup(desc:str, add_help:bool = True) -> ArgumentParser:
     parserSelf.add_argument("--noComplain",
         help    = "suppress complaint details",
         dest    = 'noComplain',
+        default = False,
+        action  = 'store_true')
+
+    parserSelf.add_argument("--beQuiet",
+        help    = "suppress all console output",
+        dest    = 'beQuiet',
         default = False,
         action  = 'store_true')
 
@@ -304,6 +306,9 @@ def options_initialize() -> Namespace:
     env.env_statePathSet(options)
     return options
 
+def timenow(fmt:str = "%Y-%m-%d %H:%M:%S") -> str:
+    return datetime.datetime.now().strftime(fmt)
+
 def date_toUNIX(str_date:str) -> int:
     ret:int     = 0
     try:
@@ -340,6 +345,7 @@ class Pfmongo:
         settings.appsettings.eventLoopDebug         = self.args.eventLoopDebug
         settings.appsettings.noResponseTruncSize    = self.args.noResponseTruncSize
         settings.appsettings.modelSizesPrint        = self.args.modelSizesPrint
+        settings.appsettings.beQuiet                = self.args.beQuiet
         if self.args.responseTruncSize:
             settings.mongosettings.responseTruncSize= self.args.responseTruncSize
         if self.args.responseTruncDepth:
@@ -646,6 +652,5 @@ class Pfmongo:
             case 'listDocument':        await self.listDocument_do(self.args.argument)
             case 'getDocument':         await self.getDocument_do(self.args.argument)
             case 'searchDocument':      await self.searchDocument_do(self.args.argument)
-
 
 
