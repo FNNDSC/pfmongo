@@ -6,7 +6,6 @@ from    pfmisc                  import  Colors as C
 from    pfmongo.models          import  responseModel
 from    typing                  import  cast
 
-from    pfmongo.commands.clop   import add
 from    pfmongo.commands.clop   import connect
 
 NC  = C.NO_COLOUR
