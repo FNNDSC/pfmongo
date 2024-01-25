@@ -10,9 +10,10 @@ import  pudb
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
+PL  = C.PURPLE
+YL  = C.YELLOW
 
 from pfmongo.models.dataModel import messageType
-
 
 def options_add(database:str, options:Namespace) -> Namespace:
     options.do          = 'deleteDB'
@@ -26,7 +27,7 @@ def DB_connectToTarget(options:Namespace) -> str:
         db.connectTo_asInt(options)
     return options.argument
 
-def DBdel_setup(options: Namespace) -> int:
+def DBdel_setupFail(options: Namespace) -> int:
     if env.env_failCheck(options):
         return 100
     DB_connectToTarget(options)
@@ -35,22 +36,25 @@ def DBdel_setup(options: Namespace) -> int:
 
 def DBdel_asInt(options:Namespace) -> int:
     fail:int            = 0
-    if (fail := DBdel_setup(options)):
+    if (fail := DBdel_setupFail(options)):
         return fail
     return driver.run_intReturn(options)
 
 def DBdel_asModel(options:Namespace) -> responseModel.mongodbResponse:
     model:responseModel.mongodbResponse = responseModel.mongodbResponse()
-    fail:int            = 0
-    if (fail := DBdel_setup(options)):
+    if DBdel_setupFail(options):
         model.message   = 'env failure'
         return model
     return driver.run_modelReturn(options)
 
 @click.command(cls = env.CustomCommand, help=f"""
-{GR}DATABASE{NC} -- delete an entire database
+delete an entire {PL}DATABASE{NC}
 
-This subcommand removes an entire {GR}DATABASE{NC} immediately.
+SYNOPSIS
+{CY}deletedb {YL}<DATABASE>{NC}
+
+DESC
+This subcommand removes an entire {YL}DATABASE{NC} immediately.
 Use with care! No confirmation is asked by the system!
 
 """)
