@@ -1,6 +1,7 @@
 from    pathlib     import  Path
 from    argparse    import  Namespace
 from    typing      import  Optional
+from    pfmongo     import  env
 from    pfmisc      import  Colors  as C
 import  click
 import  pudb
@@ -24,8 +25,8 @@ def root(options:Namespace) -> Path:
         root        = Path(*list(RFS.parts)[:si + 1])
     return root
 
-@click.group(help=f"""
-             {GR}<fileSystem> {CY}cmd {NC}args -- "file system" commands
+@click.group(cls = env.CustomGroup, help=f"""
+commands suitable for "{GR}file system{NC}" abstractions
 
 This command group uses file system (FS) "commands" in the context of a mongodb
 allowing for an FS-modeled interface.
