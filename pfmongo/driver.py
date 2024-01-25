@@ -6,9 +6,10 @@ import  json
 import  sys
 from    pfmisc                      import Colors as C
 from    pfmongo                     import pfmongo
-from    pfmongo.models              import responseModel
+from    pfmongo.models              import responseModel, dataModel
 from    pfmongo.pfmongo             import Pfmongo  as MONGO
 from    pfmongo.config              import settings
+import  copy
 import  pudb
 
 from typing import Any, Dict, List, Union, cast
@@ -28,6 +29,18 @@ NestedDict = Union[str, Dict[str, Any], List[Any]]
 
 class SizeLimitedDict(BaseModel):
     value: NestedDict
+
+def settmp(options:Namespace, newkeyvaluepair:list) -> Namespace:
+    """
+    set some values (newkeyvaluepair) in a copy of
+    <options> and return this copy. Note the original
+    <options> is not affected.
+    """
+    localoptions   = copy.deepcopy(options)
+    for pair in newkeyvaluepair:
+        for k, v in pair.items():
+            setattr(localoptions, k, v)
+    return localoptions
 
 def get_size(obj: NestedDict) -> int:
     size = sys.getsizeof(obj)
@@ -74,7 +87,10 @@ def model_gets(mongodb:MONGO) -> Callable[[bool], str]:
     def model_toStr(addModelSizes:bool = False) -> str:
         respstr:str             = ""
         if not settings.appsettings.detailedOutput:
-            return mongodb.responseData.message
+            respstr             = mongodb.responseData.message
+            if settings.appsettings.logging == dataModel.loggingType.NDJSON:
+                respstr         = f'{{"pfmongo": "{respstr}"}}'
+            return respstr
         try:
             respstr = mongodb.responseData.model_dump_json()
         except Exception as e:
@@ -82,6 +98,8 @@ def model_gets(mongodb:MONGO) -> Callable[[bool], str]:
         model           = json.loads(respstr)
         modelForDisplay = model_pruneForDisplay(model)
         respstr         = json.dumps(modelForDisplay)
+        if settings.appsettings.logging == dataModel.loggingType.NDJSON:
+            respstr     = f'{{"pfmongo": {respstr}}}'
         if addModelSizes:
             respstr    += json.dumps(
                             {
@@ -99,10 +117,10 @@ def responseData_print(mongodb:MONGO) -> None:
     model_asString:Callable[[bool], str] = model_gets(mongodb)
     print(model_asString(settings.appsettings.modelSizesPrint))
 
-def event_process(
+def event_setup(
     options:Namespace,
     f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
-):
+) -> Callable[...,int|responseModel.mongodbResponse]:
     # Create the mongodb object...
     mongodb:pfmongo.Pfmongo     = pfmongo.Pfmongo(options)
 
@@ -130,7 +148,7 @@ def event_process(
         else:
             # else run it with a synchronous callback
             mongodb     = f_syncCallBack(mongodb)
-        if printResponse:
+        if printResponse and not options.beQuiet:
             responseData_print(mongodb)
         return payloadAs(returnType)
 
@@ -141,7 +159,7 @@ def do(
     retType:str,
     f_syncCallBack:Optional[Callable[[MONGO], MONGO]] = None
 ) -> int | responseModel.mongodbResponse:
-    f = event_process(options, f_syncCallBack)
+    f = event_setup(options, f_syncCallBack)
     return f(printResponse = True, returnType = retType)
 
 def run_intReturn(
