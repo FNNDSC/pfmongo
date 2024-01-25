@@ -7,6 +7,7 @@ from    pfmongo.models  import  responseModel
 NC = C.NO_COLOUR
 GR = C.LIGHT_GREEN
 CY = C.CYAN
+PL = C.PURPLE
 
 def options_add(options:Namespace) -> Namespace:
     options.do          = 'showAllDB'
@@ -19,8 +20,12 @@ def showAll_asModel(options:Namespace) -> responseModel.mongodbResponse:
     return driver.run_modelReturn(options)
 
 @click.command(cls = env.CustomCommand, help=f"""
--- list databases containing data
+list {PL}DATABASES{NC} containing data
 
+SYNOPSIS
+{CY}showall{NC}
+
+DESC
 This command shows all the populated databases available in a given mongodb
 server. It accepts no arguments.
 
