@@ -10,7 +10,7 @@ GR  = C.GREEN
 CY  = C.CYAN
 
 @click.group(cls = env.CustomGroup, help=f"""
-database level commands: show, connect, delete
+commands suitable for database focus: {GR}show, connect, deletedb{NC}
 
 This command group provides mongo "database" level commands, allowing
 connection to a new database, deletion of an existing database, and
