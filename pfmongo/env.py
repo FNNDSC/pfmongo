@@ -440,6 +440,8 @@ def addDocument_failureCheck(
                     {CY}--id {GR}<value>{NC}
 
                  in the {GR}add{NC} subcommand.
+
+                 {CY}{usage.resp['database']}{NC}/{GR}{usage.resp['collection']}{NC}/{LR}{usage.documentName}{NC}
                 ''',
                 6,
                 dataModel.messageType.ERROR)
