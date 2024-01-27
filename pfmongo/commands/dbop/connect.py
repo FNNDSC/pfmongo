@@ -3,6 +3,7 @@ import  click
 from    pfmisc          import Colors as C
 from    pfmongo         import driver, env
 from    pfmongo.models  import responseModel
+from    copy            import deepcopy
 import  pudb
 
 NC = C.NO_COLOUR
@@ -12,9 +13,10 @@ YL = C.YELLOW
 PL = C.PURPLE
 
 def options_add(database:str, options:Namespace) -> Namespace:
-    options.do          = 'connectDB'
-    options.argument    = database
-    return options
+    localoptions:Namespace   = deepcopy(options)
+    localoptions.do          = 'connectDB'
+    localoptions.argument    = database
+    return localoptions
 
 def connectTo_asInt(options:Namespace) -> int:
     return driver.run_intReturn(options)
