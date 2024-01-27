@@ -22,10 +22,10 @@ def resp_process(resp:responseModel.mongodbResponse) -> None:
         print(f)
 
 @click.command(cls = env.CustomCommand, help=f"""
-{CY}<args>{NC} -- list files
+list files
 
 SYNOPSIS
-{CY}ls {YL}[--long] <path>{NC}
+{CY}ls {YL}[--long] ]--human] <path>{NC}
 
 ARGS
 This command lists the objects (files and directories) that are at a given
@@ -33,7 +33,11 @@ path. This path can be a directory, in which case possibly multiple objects
 are listed, or it can be a single file in which case information about that
 single file is listed.
 
-The {YL}-l{NC} flag triggers a detailed listing.
+The {YL}--long{NC} flag triggers a detailed listing, showing analogues to
+the document or "file" {CY}owner{NC}, {CY}size{NC}, and creation {CY}date{NC}.
+This assumes that the document entry has these fields encoded, which is only
+true for files uploaded using {YL}pfmongo{NC}.
+
 
 """)
 @click.argument('path',
@@ -45,7 +49,7 @@ The {YL}-l{NC} flag triggers a detailed listing.
               help      = 'If set, use a long listing format')
 @click.pass_context
 def ls(ctx:click.Context, path:str, attribs:str, long:bool) -> None:
-    pudb.set_trace()
+    # pudb.set_trace()
     resp:responseModel.mongodbResponse  = responseModel.mongodbResponse()
     resp = doc.showAll_asModel(
             driver.settmp(
