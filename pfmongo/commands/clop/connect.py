@@ -14,9 +14,10 @@ YL = C.YELLOW
 
 
 def options_add(collection:str, options:Namespace) -> Namespace:
-    options.do          = 'connectCollection'
-    options.argument    = collection
-    return options
+    localoptions            = copy.deepcopy(options)
+    localoptions.do         = 'connectCollection'
+    localoptions.argument   = collection
+    return localoptions
 
 def is_shadowCollection(collection:str) -> Tuple[str, bool]:
     isShadow:bool = True if collection.endswith(settings.mongosettings.flattenSuffix) \
