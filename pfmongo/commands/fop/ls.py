@@ -15,7 +15,6 @@ CY  = C.CYAN
 PL  = C.PURPLE
 YL  = C.YELLOW
 
-
 def resp_process(resp:responseModel.mongodbResponse) -> None:
     file:list   = ast.literal_eval(resp.message)
     for f in file:
