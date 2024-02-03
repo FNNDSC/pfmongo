@@ -3,6 +3,7 @@ from    pfmongo         import  driver, env
 from    argparse        import  Namespace
 from    pfmisc          import  Colors as C
 from    pfmongo.models  import  responseModel
+import  copy
 import  pudb
 
 NC  = C.NO_COLOUR
@@ -12,9 +13,10 @@ PL  = C.PURPLE
 YL  = C.YELLOW
 
 def options_add(field:str, options:Namespace) -> Namespace:
-    options.do          = 'listDocument'
-    options.argument    = field
-    return options
+    localoptions:Namespace  = copy.deepcopy(options)
+    localoptions.do         = 'listDocument'
+    localoptions.argument   = field
+    return localoptions
 
 def showAll_asInt(options:Namespace) -> int:
     return driver.run_intReturn(options)
