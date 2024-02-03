@@ -4,6 +4,7 @@ from    pfmongo         import  driver, env
 from    argparse        import  Namespace
 from    pfmongo.models  import  responseModel
 from    pfmisc          import  Colors as C
+import  copy
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -14,9 +15,10 @@ YL  = C.YELLOW
 from pfmongo.models.dataModel import messageType
 
 def options_add(id:str, options:Namespace) -> Namespace:
-    options.do          = 'getDocument'
-    options.argument    = id
-    return options
+    localoptions:Namespace  = copy.deepcopy(options)
+    localoptions.do         = 'getDocument'
+    localoptions.argument   = id
+    return localoptions
 
 def get_envFailCheck(options:Namespace) -> int:
     if env.env_failCheck(options):
