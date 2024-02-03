@@ -34,14 +34,23 @@ def command_parse(command:str) -> str:
         command = 'fs --help'
     return command
 
+def state_getModel(options:Namespace) -> responseModel.mongodbResponse:
+    return state.showAll_asModel(
+            driver.settmp(
+                          options,
+                          [{'beQuiet': True}]
+            )
+    )
+
 def cwd(options:Namespace) -> Path:
-    model:responseModel.mongodbResponse = state.showAll_asModel(options)
-    return Path('/' + model.message)
+    model:responseModel.mongodbResponse = state_getModel(options)
+    if model.message == '/':
+        return Path('/')
+    else:
+        return Path('/' + model.message)
 
 def prompt_get(options:Namespace) -> str:
-    localoptions:Namespace              = copy.deepcopy(options)
-    localoptions.beQuiet                = True
-    model:responseModel.mongodbResponse = state.showAll_asModel(localoptions)
+    model:responseModel.mongodbResponse = state_getModel(options)
     prompt                              = f"{CY}(smash){NC}/{model.message}{GR}>$ {NC}"
     return prompt
 
@@ -75,7 +84,7 @@ allows you to directly call various subcommands.
 
 If you really want to {CY}smash{NC} things up, the shell allows
 you to call the {YL}fs{NC} subcommands without the {YL}fs{NC}, giving
-he impression of being in a more standard un*x land.
+the impression of being in a more standard un*x land.
 
 Some useful commands:
  ▙▄ {YL}--help{NC} for a list of {YL}all{NC} commands.
