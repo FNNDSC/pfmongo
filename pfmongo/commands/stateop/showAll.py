@@ -52,4 +52,3 @@ This command shows internal program state. It accepts no arguments.
 def showAll(ctx:click.Context) -> int:
     # pudb.set_trace()
     return showAll_asInt(ctx.obj['options'])
-    # return driver.run_intReturn(ctx.obj['options'], stateResponse_eval)
