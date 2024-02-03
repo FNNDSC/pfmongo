@@ -6,15 +6,11 @@ from    pfmisc      import  Colors  as C
 import  click
 import  pudb
 
+from    pfmongo.commands.fop    import cd, ls, cat, mkcd, imp, exp, pwd
+
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
-
-try:
-    from    fop     import ls, cat, cd, mkdir, imp, exp
-except:
-    from    .fop    import ls, cat, cd, mkdir, imp, exp
-
 
 def root(options:Namespace) -> Path:
     root:Path       = Path()
@@ -38,7 +34,8 @@ def fs():
 fs.add_command(ls.ls)
 fs.add_command(cat.cat)
 fs.add_command(cd.cd)
-fs.add_command(mkdir.mkdir)
+fs.add_command(mkcd.mkcd)
 fs.add_command(imp.imp)
 fs.add_command(exp.exp)
+fs.add_command(pwd.pwd)
 
