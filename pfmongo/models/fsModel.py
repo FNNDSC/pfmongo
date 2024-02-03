@@ -12,8 +12,13 @@ from    pathlib             import Path
 
 class cdResponse(BaseModel):
     path:Path       = Path("")
-    status:bool     = False
+    message:str     = ""
+    status:bool     = True
     error:str       = ""
     code:int        = 0
+    state:dict      = {
+                        "database":     "",
+                        "collection":   ""
+                       }
 
 
