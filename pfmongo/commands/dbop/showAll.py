@@ -3,6 +3,7 @@ from    argparse        import  Namespace
 from    pfmisc          import  Colors as C
 from    pfmongo         import  driver, env
 from    pfmongo.models  import  responseModel
+import  copy
 
 NC = C.NO_COLOUR
 GR = C.LIGHT_GREEN
@@ -10,8 +11,9 @@ CY = C.CYAN
 PL = C.PURPLE
 
 def options_add(options:Namespace) -> Namespace:
-    options.do          = 'showAllDB'
-    return options
+    localoptions:Namespace = copy.deepcopy(options)
+    localoptions.do        = 'showAllDB'
+    return localoptions
 
 def showAll_asInt(options:Namespace) -> int:
     return driver.run_intReturn(options)
