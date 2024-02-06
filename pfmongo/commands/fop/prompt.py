@@ -28,7 +28,8 @@ def options_add(options:Namespace) -> Namespace:
     return localoptions
 
 def cd_options(options:Namespace) -> Namespace:
-    return cd.options_add(options.cwd, True, options)
+    mkdir:bool  = True
+    return cd.options_add(options.cwd, options, mkdir)
 
 def prompt_do(options:Namespace) -> fsModel.cdResponse:
     promptResp:fsModel.cdResponse       = cd.changeDirectory(cd_options(options))
