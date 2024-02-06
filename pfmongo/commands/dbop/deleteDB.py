@@ -6,6 +6,7 @@ from    pfmisc          import  Colors as C
 from    pfmongo.commands.dbop   import  connect as db
 from    pfmongo.models          import  responseModel
 import  pudb
+import  copy
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -16,9 +17,10 @@ YL  = C.YELLOW
 from pfmongo.models.dataModel import messageType
 
 def options_add(database:str, options:Namespace) -> Namespace:
-    options.do          = 'deleteDB'
-    options.argument    = database
-    return options
+    localoptions:Namespace  = copy.deepcopy(options)
+    localoptions.do         = 'deleteDB'
+    localoptions.argument   = database
+    return localoptions
 
 def DB_connectToTarget(options:Namespace) -> str:
     currentDB:str  = env.DBname_get(options)
