@@ -46,7 +46,7 @@ def pwd_asInt(options):
     return pathResp.code
 
 @click.command(cls = env.CustomCommand, help=f"""
-print working directory
+print working {YL}directory{NC}
 
 SYNOPSIS
 {CY}pwd{NC}
