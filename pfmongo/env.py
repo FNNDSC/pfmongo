@@ -117,12 +117,8 @@ def complain(
     if settings.appsettings.noComplain:
         return code
     if settings.appsettings.logging == dataModel.loggingType.CONSOLE:
-        # print(f"\n{CL}{level.name}{NC}")
         if message:
             print(tabulate_message(message, f"{CL}{level.name}{NC}"))
-            # lines = [[line] for line in message.split('\n')]
-            # table = tabulate(lines, headers = [f"{CL}{level.name}{NC}"] , tablefmt = 'fancy_outline')
-            # print(f"{table}")
     else:
         print(f'{{"level": "{level.name}"}}')
         pudb.set_trace()
@@ -180,17 +176,17 @@ def response_exitCode(var:      responseModel.databaseDesc              |\
         case responseModel.DocumentAddUsage():
             exitCode    = 0 if var.status           else 103
         case responseModel.DocumentGetUsage():
-            exitCode    = 0 if var.status           else 103
-        case responseModel.DocumentDeleteUsage():
             exitCode    = 0 if var.status           else 104
-        case responseModel.DocumentSearchUsage():
+        case responseModel.DocumentDeleteUsage():
             exitCode    = 0 if var.status           else 105
-        case responseModel.DocumentListUsage():
+        case responseModel.DocumentSearchUsage():
             exitCode    = 0 if var.status           else 106
-        case responseModel.dbDeleteUsage():
+        case responseModel.DocumentListUsage():
             exitCode    = 0 if var.status           else 107
-        case responseModel.CollectionDeleteUsage():
+        case responseModel.dbDeleteUsage():
             exitCode    = 0 if var.status           else 108
+        case responseModel.CollectionDeleteUsage():
+            exitCode    = 0 if var.status           else 109
     return exitCode
 
 def databaseOrCollectionDesc_message(var:responseModel.databaseDesc|\
