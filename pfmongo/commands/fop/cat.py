@@ -30,7 +30,7 @@ def options_add(file:str, options:Namespace) -> Namespace:
 def path_process(options:Namespace) -> fsModel.cdResponse:
     dir:Path    = options.file.parent
 
-    return cd.changeDirectory(cd.options_add(str(dir), False, options))
+    return cd.changeDirectory(cd.options_add(str(dir), options))
 
 def cat_do(options:Namespace) -> int:
     cwd:Path    = smash.cwd(options)
@@ -40,11 +40,11 @@ def cat_do(options:Namespace) -> int:
     getResponse:responseModel.mongodbResponse = \
             get.documentGet_asModel(get.options_add(str(options.file.name), options))
     print(getResponse.message)
-    cd.changeDirectory(cd.options_add(str(cwd), False, options))
+    cd.changeDirectory(cd.options_add(str(cwd), options))
     return 0
 
 @click.command(cls = env.CustomCommand, help=f"""
-show a document contents
+show a {YL}document{NC} contents
 
 SYNOPSIS
 {CY}cat {YL}<file>{NC}
