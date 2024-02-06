@@ -9,6 +9,7 @@ from    pfmongo.config          import  settings
 from    pfmongo.models          import  responseModel
 from    typing                  import  Tuple, cast, Callable
 from    pfmongo.commands.clop   import connect
+import  copy
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -19,9 +20,10 @@ YL  = C.YELLOW
 from pfmongo.models.dataModel import messageType
 
 def options_add(file:str, id:str, options:Namespace) -> Namespace:
-    options.do          = 'addDocument'
-    options.argument    = {"file": file, "id": id}
-    return options
+    localoptions:Namespace   = copy.deepcopy(options)
+    localoptions.do          = 'addDocument'
+    localoptions.argument    = {"file": file, "id": id}
+    return localoptions
 
 def flatten_dict(data:dict, parent_key:str='', sep:str='/') -> dict:
     flattened:dict = {}
@@ -90,8 +92,13 @@ def add_asType(
         run = prepCollection_forDocument(
                 options, connect.shadowCollection_getAndConnect, flatten_dict(document)
         )
-        if (saveShadowFail  := cast(int, run(printResponse = True, returnType = 'int'))):
+        saveShadowFail:int|responseModel.mongodbResponse = run(printResponse = False, returnType = modelReturnType)
+        if modelReturnType == 'int' and saveShadowFail:
             return saveShadowFail
+        if modelReturnType == 'model':
+            fail:responseModel.mongodbResponse = cast(responseModel.mongodbResponse, saveShadowFail)
+            if not fail.status:
+                return saveShadowFail
     # Now save to the primary collection
     run = prepCollection_forDocument(
             options, connect.baseCollection_getAndConnect, document
