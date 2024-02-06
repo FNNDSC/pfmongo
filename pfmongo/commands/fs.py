@@ -6,7 +6,7 @@ from    pfmisc      import  Colors  as C
 import  click
 import  pudb
 
-from    pfmongo.commands.fop    import cd, ls, cat, mkcd, imp, exp, pwd
+from    pfmongo.commands.fop    import cd, ls, cat, mkcd, imp, exp, pwd, prompt
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -38,4 +38,6 @@ fs.add_command(mkcd.mkcd)
 fs.add_command(imp.imp)
 fs.add_command(exp.exp)
 fs.add_command(pwd.pwd)
+fs.add_command(prompt.prompt)
+
 
