@@ -61,7 +61,7 @@ package_description:str = f"""
         {GR}database{NC}    for 'database' type commands,
         {GR}collection{NC}  for 'collection' type commands,
         {GR}document{NC}    for 'document' type commands
-        {GR}pmsh{NC}        the pfmongo REPL 'shell'
+        {GR}smash{NC}       the pfmongo REPL 'shell'
 
     Use {YL}pfmongo {GR}<grouping> {CY}--help{NC} for <grouping> specific help. For example
 
