@@ -18,13 +18,14 @@ from    pathlib                 import Path
 import  ast
 from    fortune                 import fortune
 import  copy
+import  pfmongo.commands.fop.prompt as prompt
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
 CY  = C.CYAN
 YL  = C.YELLOW
 
-fscommand:list  = ['ls', 'cat', 'rm', 'cd', 'mkdir', 'imp', 'exp']
+fscommand:list  = ['ls', 'cat', 'rm', 'cd', 'mkcd', 'imp', 'exp', 'prompt', 'pwd']
 
 def command_parse(command:str) -> str:
     fscall:list = [s for s in fscommand if command.lower().startswith(s)]
@@ -50,9 +51,8 @@ def cwd(options:Namespace) -> Path:
         return Path('/' + model.message)
 
 def prompt_get(options:Namespace) -> str:
-    model:responseModel.mongodbResponse = state_getModel(options)
-    prompt                              = f"{CY}(smash){NC}/{model.message}{GR}>$ {NC}"
-    return prompt
+    pathColor:str   =  prompt.prompt_do(prompt.options_add(options)).message
+    return f"{CY}(smash){NC}{pathColor}$>"
 
 def meta_parse(command:str) -> bool:
     b_ret   = False
