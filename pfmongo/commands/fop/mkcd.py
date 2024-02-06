@@ -16,7 +16,7 @@ PL  = C.PURPLE
 YL  = C.YELLOW
 
 @click.command(cls = env.CustomCommand, help=f"""
-make-and-cd into a directory
+make-and-cd into a {YL}directory{NC}
 
 SYNOPSIS
 {CY}mkcd {YL}<path>{NC}
@@ -34,6 +34,7 @@ In reality this is simply an alias to {CY}cd {YL}--create <path>{NC}
                 required = False)
 def mkcd(ctx:click.Context, path:str) -> int:
     # pudb.set_trace()
-    return cd.changeDirectory(cd.options_add(path, True, ctx.obj['options'])).code
+    mkdir:bool = True
+    return cd.changeDirectory(cd.options_add(path, ctx.obj['options'], mkdir)).code
 
 
