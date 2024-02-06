@@ -22,7 +22,7 @@ GR  = C.GREEN
 CY  = C.CYAN
 YL  = C.YELLOW
 
-def options_add(path:str, create:bool, options:Namespace) -> Namespace:
+def options_add(path:str, options:Namespace, create:bool = False) -> Namespace:
     localoptions:Namespace  = copy.deepcopy(options)
     # localoptions.beQuiet    = True
     localoptions.do         = 'cd'
@@ -169,9 +169,9 @@ def changeDirectory(options:Namespace) -> fsModel.cdResponse:
     return cdResponse
 
 @click.command(cls = env.CustomCommand, help=f"""
-change directory
+change {YL}directory{NC}
 
-               SYNOPSIS
+SYNOPSIS
 {CY}cd {YL}[--create] <path>{NC}
 
 DESC
@@ -193,5 +193,5 @@ with {YL}--create{NC}.
 @click.pass_context
 def cd(ctx:click.Context, path:str, create:bool) -> int:
     pudb.set_trace()
-    return changeDirectory(options_add(path, create, ctx.obj['options'])).code
+    return changeDirectory(options_add(path, ctx.obj['options'], create)).code
 
