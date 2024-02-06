@@ -85,7 +85,7 @@ def ls_asModel(options:Namespace) -> responseModel.mongodbResponse:
     return resp
 
 @click.command(cls = env.CustomCommand, help=f"""
-list files
+list {YL}path{NC}
 
 SYNOPSIS
 {CY}ls {YL}[--long] ]--human] <path>{NC}
