@@ -20,3 +20,5 @@ pydantic_settings
 click
 appdirs
 tabulate
+fortune-python
+
