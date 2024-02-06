@@ -98,7 +98,7 @@ def is_root(options:Namespace) -> bool:
 def is_path_too_long(options) -> fsModel.cdResponse:
     fsPath:fsModel.cdResponse   = fsModel.cdResponse()
     if len(options.cd.path.parents) > 2:
-        fsPath.error    = "Path too long"
+        fsPath.error    = f"{options.cd.path}: path too long"
         fsPath.status   = False
         fsPath.code     = 1
     return fsPath
