@@ -27,7 +27,7 @@ GR  = C.LIGHT_GREEN
 CY  = C.CYAN
 LR  = C.LIGHT_RED
 LB  = C.LIGHT_PURPLE
-
+YL  = C.YELLOW
 
 class CustomFormatter(click.HelpFormatter):
     def write(self, string):
@@ -95,6 +95,15 @@ def tabulate_message(message:str, title:str = "") -> str:
     lines = [[line] for line in message.split('\n')]
     table = tabulate(lines, headers = [f"{title}"] , tablefmt = 'fancy_outline')
     return table
+
+def sprint_multi(string:str, length:int) ->str:
+    """
+    split a string into several strings of len <length>
+    """
+    multiline:str = ""
+    for i in range(0, len(string), length):
+        multiline += string[i:i+length] + '\n'
+    return multiline
 
 def complain(
         message:str,
@@ -428,7 +437,7 @@ def addDocument_failureCheck(
         complain(f'''
                 A document add usage error has occured, reported as:
 
-                {LR}{usage.resp['error']}{NC}
+                {LR}{sprint_multi(usage.resp['error'], 65)}{NC}
 
                 This typically means that a duplicate 'id' has been specified.
                 Please check the value of any
@@ -463,14 +472,15 @@ def deleteDocument_failureCheck(
                 dataModel.messageType.ERROR)
     if not usage.status:
         complain(f'''
-                A document delete usage error has occured. This typically means that
-                the passed 'id' was not found in the target collection.
+                A document {YL}delete{NC} usage error has occured. This typically means
+                that the passed {CY}id{NC} was not found in the database/collection of
+                 {GR}{usage.collection.databaseName}/{usage.collection.name}{NC}
 
-                Please check the value of any
+                Please check that
 
-                    {CY}--id {GR}<value>{NC}
+                    {CY}--id {GR}{usage.documentName}{NC}
 
-                in the {GR}delete{NC} subcommand and try again.
+                in the {YL}delete{NC} subcommand is valid and try again.
                 ''',
                 6,
                 dataModel.messageType.ERROR)
@@ -761,10 +771,13 @@ def env_failCheck(options:Namespace) -> int:
     if not DBname_get(options):
         return complain(f'''
             Unable to determine which database to use.
-            A `--useDB` flag with the database name as
-            argument must be specified or alternatively
-            be set in the environment as MD_DB or exist
-            as a previous configuration state. ''',
+
+            No resolution method was successful. Resolutions include:
+                * a {GR}--useDB {YL}<database>{NC} CLI key/value pair
+                * an appropriate MD_DB environment variable
+                * a previous CLI {YL}database{NC} subcommand
+                * an appropriate CLI {CY}cd {YL}/<database>{NC}
+            ''',
             1, messageType.ERROR)
     if not collectionName_get(options):
         return complain(f'''
