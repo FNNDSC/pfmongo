@@ -12,12 +12,10 @@ from    pfmongo.models  import fsModel, responseModel
 import  pfmongo.commands.smash      as smash
 import  pfmongo.commands.fop.cd     as cd
 import  pfmongo.commands.docop.get  as get
-from    pfmongo.commands.fop.pwd    import pwd_level
+from    pfmongo.commands.fop.pwd    import dir_level
 from    pfmongo.commands.document   import delete    as doc
 from    pfmongo.commands.database   import deleteDB  as db
 from    pfmongo.commands.collection import deleteCol as col
-
-
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -31,11 +29,6 @@ def options_add(file:str, options:Namespace) -> Namespace:
     localoptions.file       = Path(file)
     localoptions.beQuiet    = True
     return localoptions
-
-# def path_process(options:Namespace) -> fsModel.cdResponse:
-#     dir:Path    = options.file.parent
-
-#     return cd.changeDirectory(cd.options_add(str(dir), options))
 
 def rm_db(options:Namespace) -> responseModel.mongodbResponse :
     resp    = db.DBdel_asModel(
@@ -58,7 +51,7 @@ def rm_collection(options:Namespace) -> responseModel.mongodbResponse :
 def rm_doc(options:Namespace) -> responseModel.mongodbResponse:
     resp    = doc.deleteDo_asModel(
                 driver.settmp(
-                    doc.options_add('_id', options),
+                    doc.options_add(str(options.file.name), options),
                     [{'beQuiet': True}]
                 )
             )
@@ -76,34 +69,30 @@ def rm_setName(options:Namespace) -> Namespace:
         options.file = options.file.name
     return options
 
-def rm_do(options:Namespace) -> tuple[int, responseModel.mongodbResponse]:
-    cwd:Path                    = smash.cwd(options)
+def rm_do(options:Namespace) -> responseModel.mongodbResponse:
+    cwd:Path                            = smash.cwd(options)
     resp:responseModel.mongodbResponse  = responseModel.mongodbResponse()
     cdResp:fsModel.cdResponse           = fsModel.cdResponse()
     if not (cdResp:=cd_toParent(options)).status:
         resp.message    = cdResp.message
-        return 1, resp
-
-    match pwd_level(options):
+        return resp
+    match dir_level(cdResp):
         case "root":        resp = rm_db(options)
         case "database":    resp = rm_collection(options)
         case "collection":  resp = rm_doc(options)
         case "_":           resp.message = "invalid directory level"
-    if not options.beQuiet:
-        print(resp.message)
-    ret:int     = 0
-    if not resp.message:
-        ret     = 1
+    print(resp.message)
     cd.changeDirectory(cd.options_add(str(cwd), options))
-    return ret, resp
+    return resp
 
 def rm_asInt(options:Namespace) -> int:
-    ret, resp   = rm_do(options)
-    return ret
+    resp:responseModel.mongodbResponse              = rm_do(options)
+    docDelUsage:responseModel.DocumentDeleteUsage   = responseModel.DocumentDeleteUsage()
+    docDelUsage.status = resp.status
+    return env.response_exitCode(docDelUsage)
 
 def rm_asModel(options:Namespace) -> responseModel.mongodbResponse:
-    ret, resp   = rm_do(options)
-    return resp
+    return rm_do(options)
 
 @click.command(cls = env.CustomCommand, help=f"""
 delete {YL}path{NC}
@@ -122,4 +111,4 @@ to delete.
                 required = False)
 def rm(ctx:click.Context, path:str) -> int:
     pudb.set_trace()
-    return rm_do(options_add(path, ctx.obj['options']))
+    return rm_asInt(options_add(path, ctx.obj['options']))
