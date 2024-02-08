@@ -30,6 +30,13 @@ def pwd_level(options:Namespace) -> str:
         case 3: return "collection"
         case _: return "unknown"
 
+def dir_level(dir:fsModel.cdResponse) -> str:
+    match len(dir.path.parts):
+        case 1: return "root"
+        case 2: return "database"
+        case 3: return "collection"
+        case _: return "unknown"
+
 def pwd_do(options:Namespace) -> fsModel.cdResponse:
     pathResp            = fsModel.cdResponse()
     resp:responseModel.mongodbResponse   = state.showAll_asModel(options)
