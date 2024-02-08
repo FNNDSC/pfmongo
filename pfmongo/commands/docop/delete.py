@@ -8,6 +8,7 @@ from    pfmongo.config          import  settings
 from    pfmongo.commands.clop   import  connect
 from    pfmongo.models          import  responseModel
 from    typing                  import  cast
+import  copy
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -16,9 +17,10 @@ PL  = C.PURPLE
 YL  = C.YELLOW
 
 def options_add(id:str, options:Namespace) -> Namespace:
-    options.do          = 'deleteDocument'
-    options.argument    = id
-    return options
+    localoptions:Namespace  = copy.deepcopy(options)
+    localoptions.do          = 'deleteDocument'
+    localoptions.argument    = id
+    return localoptions
 
 def env_check(options:Namespace) -> int:
     if env.env_failCheck(options):
@@ -26,41 +28,38 @@ def env_check(options:Namespace) -> int:
     return 0
 
 def run_check(
-        failData:int, message:str = "early failure", returnType:str = "int"
-) -> tuple[int, int|responseModel.mongodbResponse]:
-    reti:int        = failData
+        failData:int, message:str = "early failure"
+) -> responseModel.mongodbResponse:
     retm:responseModel.mongodbResponse  = responseModel.mongodbResponse()
-    if reti:
-        retm.message    = f' {message} (code {reti}) occurred in document delete'
-    match returnType:
-        case 'int':     return reti, reti
-        case 'model':   return reti, retm
-        case _:         return reti, reti
+    if failData:
+        retm.message    = f' {message} (code {failData}) occurred in document delete'
+    else:
+        retm.status     = True
+        retm.message    = 'Initial run_check in document delete ok'
+    return retm
 
-def delete_do(options:Namespace, returnType:str="int") -> int|responseModel.mongodbResponse:
-    failEnv:int           = 0
+def delete_do(options:Namespace) -> responseModel.mongodbResponse:
+    failEnv:int         = 0
     if (failEnv := env_check(options)):
-        return run_check(failEnv, 'failure in document del setup', returnType)[1]
-
-    if (failDel := run_check(
-                            driver.run_intReturn(connect.baseCollection_getAndConnect(options)),
-                            'failure in document base collection delete',
-                            returnType)
-                    )[0]:
-        return failDel[1]
-
+        return run_check(failEnv, 'failure in document del setup')
+    delResp:responseModel.mongodbResponse   = responseModel.mongodbResponse()
+    if not (delResp:=driver.run_modelReturn(
+        connect.baseCollection_getAndConnect(options))
+    ).status:
+        return delResp
+    print(delResp.message)
     if not settings.appsettings.donotFlatten:
-        failDel = run_check(
-                            driver.run_intReturn(connect.shadowCollection_getAndConnect(options)),
-                            'failure in document shadow collection delete',
-                            returnType)
-    return failDel[1]
+        delResp = driver.run_modelReturn(connect.shadowCollection_getAndConnect(options))
+    return delResp
 
 def deleteDo_asInt(options:Namespace) -> int:
-    return cast(int, delete_do(options, 'int'))
+    delResp:responseModel.mongodbResponse           = delete_do(options)
+    docDelUse:responseModel.DocumentDeleteUsage     = responseModel.DocumentDeleteUsage()
+    docDelUse.status                                = delResp.status
+    return env.response_exitCode(docDelUse)
 
 def deleteDo_asModel(options:Namespace) -> responseModel.mongodbResponse:
-    return cast(responseModel.mongodbResponse, delete_do(options, 'model'))
+    return delete_do(options)
 
 @click.command(cls = env.CustomCommand, help=f"""
 remove a {YL}document{NC} from a collection
