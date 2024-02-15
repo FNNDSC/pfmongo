@@ -76,6 +76,7 @@ def rm_do(options:Namespace) -> responseModel.mongodbResponse:
     if not (cdResp:=cd_toParent(options)).status:
         resp.message    = cdResp.message
         return resp
+    options.file    = options.file.name
     match dir_level(cdResp):
         case "root":        resp = rm_db(options)
         case "database":    resp = rm_collection(options)
