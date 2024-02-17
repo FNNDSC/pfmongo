@@ -34,7 +34,9 @@ def rm_db(options:Namespace) -> responseModel.mongodbResponse :
     resp    = db.DBdel_asModel(
                 driver.settmp(
                     db.options_add(str(options.file), options),
-                    [{'beQuiet': True}]
+                    [{'beQuiet': True},
+                     {'DBname': str(options.file)},
+                     {'collectionName': 'void'}]
                 )
             )
     return resp
@@ -43,7 +45,8 @@ def rm_collection(options:Namespace) -> responseModel.mongodbResponse :
     resp    = col.collectiondel_asModel(
                 driver.settmp(
                     col.options_add(str(options.file), options),
-                    [{'beQuiet': True}]
+                    [{'beQuiet': True},
+                     {'collectionName': str(options.file)}]
                 )
             )
     return resp
@@ -57,14 +60,9 @@ def rm_doc(options:Namespace) -> responseModel.mongodbResponse:
             )
     return resp
 
-def cd_toParent(options:Namespace) -> fsModel.cdResponse:
-    return  cd.changeDirectory(
-                cd.options_add(options.file.parent, options)
-            )
-
 def rm_setName(options:Namespace) -> Namespace:
     cdResp:fsModel.cdResponse           = fsModel.cdResponse()
-    cdResp  = cd_toParent(options)
+    cdResp  = cd.toParent(options)
     if cdResp.status:
         options.file = options.file.name
     return options
@@ -73,10 +71,10 @@ def rm_do(options:Namespace) -> responseModel.mongodbResponse:
     cwd:Path                            = smash.cwd(options)
     resp:responseModel.mongodbResponse  = responseModel.mongodbResponse()
     cdResp:fsModel.cdResponse           = fsModel.cdResponse()
-    if not (cdResp:=cd_toParent(options)).status:
+    if not (cdResp:=cd.toParent(cd.fullPath_resolve(cd.options_add(options.file, options)))).status:
         resp.message    = cdResp.message
         return resp
-    options.file    = options.file.name
+    options.file    = Path(options.file.name)
     match dir_level(cdResp):
         case "root":        resp = rm_db(options)
         case "database":    resp = rm_collection(options)
