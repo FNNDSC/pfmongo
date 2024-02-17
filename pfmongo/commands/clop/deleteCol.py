@@ -6,6 +6,7 @@ from    pfmisc          import  Colors as C
 from    pfmongo.commands.clop       import connect as collection
 from    pfmongo.models              import responseModel
 import  pudb
+import  copy
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -16,10 +17,11 @@ YL  = C.YELLOW
 from pfmongo.models.dataModel import messageType
 
 
-def options_add(database:str, options:Namespace) -> Namespace:
-    options.do          = 'deleteCollection'
-    options.argument    = database
-    return options
+def options_add(collection:str, options:Namespace) -> Namespace:
+    localoptions:Namespace  = copy.deepcopy(options)
+    localoptions.do         = 'deleteCollection'
+    localoptions.argument   = collection
+    return localoptions
 
 def col_connectToTarget(options:Namespace) -> str:
     currentCol:str      = env.collectionName_get(options)
@@ -57,7 +59,7 @@ SYNOPSIS
 
 DESC
 This subcommand removes an entire {YL}COLLECTION{NC} immediately.
-Use with care! No confirmation is asked by the system!
+Use with care! The system does not ask for confirmation!
 """)
 @click.argument('collection',
                 required = True)
