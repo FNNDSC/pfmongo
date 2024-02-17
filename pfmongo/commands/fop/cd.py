@@ -32,14 +32,54 @@ def options_add(path:str, options:Namespace, create:bool = False) -> Namespace:
                             })
     return localoptions
 
+def path_to_dbCol(options:Namespace) -> tuple:
+    path:Path       = options.cd.path
+    db:str          = ""
+    collection:str  = ""
+    match len(path.parts):
+        case _ if len(path.parts) == 2:
+            (root, db)  = path.parts
+        case _ if len(path.parts) > 2:
+            (root, db, collection) = path.parts
+    return (db, collection)
+
+def toParent(options:Namespace) -> fsModel.cdResponse:
+    return  changeDirectory(
+                options_add(options.cd.path.parent, options)
+            )
+
+def toDir(options:Namespace) -> fsModel.cdResponse:
+    (db, collection) = path_to_dbCol(options)
+    return  changeDirectory(
+                options_add(f"/{db}/{collection}", options)
+            )
+
 def fullPath_resolve(options:Namespace) -> Namespace:
+    def navigate_cd():
+        ups:str     = '../'
+        path:Path   = smash.cwd(options)
+        cd          = str(options.cd.path)
+        if cd.startswith(ups):
+            if not cd.endswith('/'):
+                cd += '/'
+            levels_up:int   = cd.count(ups)
+            try:
+                path    = path.parents[levels_up - 1] if levels_up > 1 \
+                                else path.parent
+            except:
+                path    = Path('/')
+            cd      = cd[len(ups)*levels_up:]
+        options.cd.path     = path / cd
+
     if options.cd.path.is_absolute():   return options
     if options.cd.path == Path('.'):
         options.cd.path = smash.cwd(options)
-    elif smash.cwd(options) == Path('/'):
+    elif options.cd.path == Path(".."):
+        options.cd.path = smash.cwd(options).parent
+    elif smash.cwd(options) == Path('/') and not str(options.cd.path).startswith('..'):
         options.cd.path = Path('/') / options.cd.path
     else:
-        options.cd.path = smash.cwd(options) / options.cd.path
+        navigate_cd()
     return options
 
 def db_isListed(db:str, options:Namespace) -> fsModel.cdResponse:
@@ -110,7 +150,7 @@ def path_connect(options:Namespace) -> fsModel.cdResponse:
     if (fsPath:=is_path_too_long(options)).code:
         return fsPath
     if is_root(options):
-        return fsPath
+        return connect
     (db, collection)    = path_to_dbCol(options)
     if db and not (fsPath:=db_isListed(db, options)).status:
         if not options.cd.create:
@@ -128,38 +168,12 @@ def path_connect(options:Namespace) -> fsModel.cdResponse:
     connect.status   = True
     connect.message  = f"successfully connected path to {connect.path}"
     connect.code     = 0
+    env.DBname_stateFileSave(options, db)
+    env.collectionName_stateFileSave(options, collection)
     return connect
-
-def path_to_dbCol(options:Namespace) -> tuple:
-    # if not path_isValid(options, path):
-    #     return ()
-    path:Path       = options.cd.path
-    db:str          = ""
-    collection:str  = ""
-    match len(path.parts):
-        case _ if len(path.parts) ==2:
-            (root, db)  = path.parts
-        case _ if len(path.parts) > 2:
-            (root, db, collection) = path.parts
-    return (db, collection)
 
 def path_lengthOK(options:Namespace) -> bool:
     return True if len(options.cd.path.parents.parts == 2) else False
-
-# def path_set(options:Namespace, path:Path) -> Namespace:
-#     dbname:str      = ""
-#     collection:str  = ""
-#     match len(path.parents):
-#         case _ if len(path.parents) >= 1:
-#             dbname      = path.parts[1]
-#         case 2:
-#             collection  = path.parts[2]
-#     env.DBname_stateFileSave(options, dbname)
-#     env.collectionName_stateFileSave(options, collection)
-#     return driver.settmp(
-#             options,
-#             [{'DBname'           : dbname},
-#              {'collectionName'   : collection}])
 
 def changeDirectory(options:Namespace) -> fsModel.cdResponse:
     options                         = fullPath_resolve(options)
