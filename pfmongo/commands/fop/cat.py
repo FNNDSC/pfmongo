@@ -59,5 +59,5 @@ to use.
 @click.argument('path',
                 required = False)
 def cat(ctx:click.Context, path:str) -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     return cat_do(options_add(path, ctx.obj['options']))
