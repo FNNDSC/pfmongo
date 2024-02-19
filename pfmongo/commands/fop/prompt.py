@@ -73,5 +73,5 @@ command actually creates something that at first is empty. In monogo, a
 """)
 @click.pass_context
 def prompt(ctx:click.Context) -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     return prompt_asInt(options_add(ctx.obj['options']))
