@@ -19,6 +19,10 @@ import  ast
 from    fortune                 import fortune
 import  copy
 import  pfmongo.commands.fop.prompt as prompt
+from    pfmongo.config          import settings
+import  subprocess
+from    typing                  import Optional, Callable, Union
+from    ansi2html               import Ansi2HTMLConverter
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -26,6 +30,39 @@ CY  = C.CYAN
 YL  = C.YELLOW
 
 fscommand:list  = ['ls', 'cat', 'rm', 'cd', 'mkcd', 'imp', 'exp', 'prompt', 'pwd']
+
+def pipe_split(command:str) -> list:
+    parts:list[str] = command.split('|' , 1)
+    return parts
+
+def smash_output(command:str) -> str:
+    output:str    = meta_parse(command)
+    if not output:
+        ret     = CliRunner().invoke(__main__.app, command.split(), color = True)
+        output  = ret.output
+    return output
+
+def smash_execute(
+        command:str,
+        f: Optional[Callable[[str, list[str]], str]] = None
+) -> Union[bytes, str]:
+    cmdpart:list    = pipe_split(command)
+    smash_ret:str   = smash_output(cmdpart[0])
+    result:str      = smash_ret
+    if len(cmdpart) > 1 and f:
+        result = f(smash_ret, cmdpart)  # Call the pipe handler with the output
+    return result
+
+def pipe_handler(previous_input:str, cmdpart:list) -> str:
+    cmds            = [c.strip() for c in cmdpart]
+    shell_command   = "|".join(cmds[1:])
+    result:subprocess.CompletedProcess = subprocess.run(
+                shell_command, input=previous_input,
+                shell=True, capture_output=False, text=True
+    )
+    # converter:Ansi2HTMLConverter    = Ansi2HTMLConverter()
+    # output:str                      = converter.convert(result.stdout)
+    return result.stdout
 
 def command_parse(command:str) -> str:
     fscall:list = [s for s in fscommand if command.lower().startswith(s)]
@@ -52,19 +89,17 @@ def cwd(options:Namespace) -> Path:
 
 def prompt_get(options:Namespace) -> str:
     pathColor:str   =  prompt.prompt_do(prompt.options_add(options)).message
-    return f"{CY}(smash){NC}{pathColor}$>"
+    return f"{CY}({settings.mongosettings.MD_sessionUser}@smash){NC}{pathColor}$>"
 
-def meta_parse(command:str) -> bool:
-    b_ret   = False
+def meta_parse(command:str) -> str:
+    output:str  = ""
     if 'quit' in command.lower() or 'exit' in command.lower():
         sys.exit(0)
     if command == 'banner':
-        print(introbanner_generate())
-        b_ret   = True
+        output = introbanner_generate()
     if command == 'fortune':
-        print(env.tabulate_message(fortune(), f'{YL}fortune{NC}'))
-        b_ret   = True
-    return b_ret
+        output = env.tabulate_message(fortune(), f'{YL}fortune{NC}')
+    return output
 
 def introbanner_generate() -> str:
     title:str   = f"{CY}s{YL}imple pf{CY}m{YL}ongo{NC} {CY}a{YL}pplication {CY}sh{YL}ell{NC}"
@@ -114,14 +149,11 @@ interface that harkens back to the days of /bin/ash!
 @click.pass_context
 def smash(ctx:click.Context, prompt) -> None:
     print(introbanner_generate())
-    # pudb.set_trace()
     options:Namespace                   = ctx.obj['options']
-    runner                              = CliRunner()
-    model:responseModel.mongodbResponse = responseModel.mongodbResponse()
     while True:
-        command:str = command_parse(input(prompt_get(options)))
-        if meta_parse(command):
-            continue
-        ret = runner.invoke(__main__.app, command.split(), color = True)
-        print(ret.output)
+        print(smash_execute(
+                command_parse(
+                    input(prompt_get(options)
+                )
+            ), pipe_handler))
 
