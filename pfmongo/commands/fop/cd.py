@@ -24,7 +24,7 @@ YL  = C.YELLOW
 
 def options_add(path:str, options:Namespace, create:bool = False) -> Namespace:
     localoptions:Namespace  = copy.deepcopy(options)
-    # localoptions.beQuiet    = True
+    localoptions.beQuiet    = True
     localoptions.do         = 'cd'
     localoptions.cd         = SimpleNamespace(**{
                                 "path":     Path(path),
@@ -206,6 +206,6 @@ with {YL}--create{NC}.
                 help        = 'If set, also create this path if it does not exist.')
 @click.pass_context
 def cd(ctx:click.Context, path:str, create:bool) -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     return changeDirectory(options_add(path, ctx.obj['options'], create)).code
 
