@@ -44,16 +44,18 @@ def smash_output(command:str) -> str:
 
 def smash_execute(
         command:str,
-        f: Optional[Callable[[str, list[str]], str]] = None
+        f: Optional[Callable[[str, list[str]], subprocess.CompletedProcess]] = None
 ) -> Union[bytes, str]:
     cmdpart:list    = pipe_split(command)
     smash_ret:str   = smash_output(cmdpart[0])
     result:str      = smash_ret
     if len(cmdpart) > 1 and f:
-        result = f(smash_ret, cmdpart)  # Call the pipe handler with the output
+        process:subprocess.CompletedProcess = f(smash_ret, cmdpart)
+        result      = f"exec: '{process.args}', returncode: {process.returncode}"
+        result      = ""
     return result
 
-def pipe_handler(previous_input:str, cmdpart:list) -> str:
+def pipe_handler(previous_input:str, cmdpart:list) -> subprocess.CompletedProcess:
     cmds            = [c.strip() for c in cmdpart]
     shell_command   = "|".join(cmds[1:])
     result:subprocess.CompletedProcess = subprocess.run(
@@ -62,7 +64,7 @@ def pipe_handler(previous_input:str, cmdpart:list) -> str:
     )
     # converter:Ansi2HTMLConverter    = Ansi2HTMLConverter()
     # output:str                      = converter.convert(result.stdout)
-    return result.stdout
+    return result
 
 def command_parse(command:str) -> str:
     fscall:list = [s for s in fscommand if command.lower().startswith(s)]
