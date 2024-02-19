@@ -16,6 +16,7 @@ from    pfmongo.commands.collection import showAll as col
 from    pfmongo.commands.fop.pwd    import pwd_level
 
 from    types                       import SimpleNamespace
+import  fontawesome                 as fa
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -26,6 +27,7 @@ YL  = C.YELLOW
 def options_add(path:str, attribs:str, long:bool, options:Namespace) -> Namespace:
     localoptions            = copy.deepcopy(options)
     localoptions.do         = 'ls'
+    localoptions.beQuiet    = True
     if not path:
         path                = '.'
     localoptions.argument   = SimpleNamespace(**{
@@ -35,10 +37,26 @@ def options_add(path:str, attribs:str, long:bool, options:Namespace) -> Namespac
     })
     return localoptions
 
-def resp_process(resp:responseModel.mongodbResponse) -> None:
+def objectSymbol_resolve(resp:responseModel.mongodbResponse) -> str:
+    symbol:str  = ""
+    match type(resp.response['connect']):
+        case responseModel.showAllDBusage:
+            symbol  = fa.icons['database']
+        case responseModel.showAllcollectionsUsage:
+            symbol  = fa.icons['table']
+        case responseModel.DocumentListUsage:
+            symbol  = fa.icons['file']
+        case _:
+            symbol  = fa.icons['file']
+    return symbol + " "
+
+def resp_process(resp:responseModel.mongodbResponse) -> str:
+    rstr:str    = ""
     file:list   = ast.literal_eval(resp.message)
+    # pudb.set_trace()
     for f in file:
-        print(f)
+        rstr   += objectSymbol_resolve(resp) + f + '  '
+    return rstr
 
 def ls_db(options:Namespace) -> responseModel.mongodbResponse :
     resp    = db.showAll_asModel(
@@ -71,12 +89,15 @@ def ls_do(options:Namespace) -> tuple[int, responseModel.mongodbResponse]:
     cwd:Path                            = smash.cwd(options)
     resp:responseModel.mongodbResponse  = responseModel.mongodbResponse()
     cdResp:fsModel.cdResponse           = fsModel.cdResponse()
-    pudb.set_trace()
+    # pudb.set_trace()
     # cd.changeDirectory(cd.options_add(options.argument.path, options))
-    if not (cdResp:=cd.toDir(cd.fullPath_resolve(cd.options_add(options.argument.path, options)))).status:
+    if not (cdResp:=cd.toDir(
+                cd.fullPath_resolve(
+                    cd.options_add(options.argument.path, options)
+                )
+            )).status:
         resp.message    = cdResp.message
         return 1, resp
-    # options.file    = Path(options.file.name)
     match pwd_level(options):
         case "root":        resp    = ls_db(options)
         case "database":    resp    = ls_collection(options)
@@ -126,5 +147,7 @@ true for files uploaded using {YL}pfmongo{NC}.
               help      = 'If set, use a long listing format')
 @click.pass_context
 def ls(ctx:click.Context, path:str, attribs:str, long:bool) -> int:
-    pudb.set_trace()
-    return ls_asInt(options_add(path, attribs, long, ctx.obj['options']))
+    # pudb.set_trace()
+    ret, resp   = ls_do(options_add(path, attribs, long, ctx.obj['options']))
+    print(resp_process(resp))
+    return  ret
