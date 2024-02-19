@@ -21,4 +21,5 @@ click
 appdirs
 tabulate
 fortune-python
+fontawesome
 
