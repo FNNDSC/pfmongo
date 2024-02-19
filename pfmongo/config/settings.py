@@ -30,6 +30,7 @@ class App(BaseSettings):
     detailedOutput:bool     = False
     modelSizesPrint:bool    = False
     eventLoopDebug:bool     = False
+    fontawesomeUse:bool     = True
 
 logging_val:Optional[str]   = 'CONSOLE'
 if 'LOGGING' in os.environ:
