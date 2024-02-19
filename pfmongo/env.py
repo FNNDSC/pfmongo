@@ -732,8 +732,8 @@ def collectionName_get(options:Namespace) -> str:
         if collectionName:
             options.collectionName                  = collectionName
             settings.mongosettings.MD_COLLECTION    = options.DBname
-    if not options.collectionName:
-        options.collectionName  = settings.mongosettings.MD_COLLECTION
+    # if not options.collectionName:
+    #     options.collectionName  = settings.mongosettings.MD_COLLECTION
     return options.collectionName
 
 def DBname_get(options:Namespace) -> str:
@@ -761,8 +761,8 @@ def DBname_get(options:Namespace) -> str:
         if DBname:
             options.DBname              = DBname
             settings.mongosettings.MD_DB= options.DBname
-    if not options.DBname:
-        options.DBname                  = settings.mongosettings.MD_DB
+    # if not options.DBname:
+    #     options.DBname                  = settings.mongosettings.MD_DB
     return options.DBname
 
 def env_failCheck(options:Namespace) -> int:
