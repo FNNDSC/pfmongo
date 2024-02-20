@@ -45,6 +45,7 @@ setup(
                             'pfmongo/commands/dbop',
                             'pfmongo/commands/clop',
                             'pfmongo/commands/stateop',
+                            'pfmongo/commands/slib',
                             'pfmongo/db',
                             'pfmongo/config',
                             'pfmongo/models'],
