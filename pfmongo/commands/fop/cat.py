@@ -29,7 +29,6 @@ def options_add(file:str, options:Namespace) -> Namespace:
 
 def path_process(options:Namespace) -> fsModel.cdResponse:
     dir:Path    = options.file.parent
-
     return cd.changeDirectory(cd.options_add(str(dir), options))
 
 def cat_do(options:Namespace) -> int:
