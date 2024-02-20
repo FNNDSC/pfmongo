@@ -23,6 +23,7 @@ from    pfmongo.config          import settings
 import  subprocess
 from    typing                  import Optional, Callable, Union
 from    ansi2html               import Ansi2HTMLConverter
+from    pfmongo.commands.slib   import tabc
 
 NC  = C.NO_COLOUR
 GR  = C.GREEN
@@ -93,6 +94,13 @@ def prompt_get(options:Namespace) -> str:
     pathColor:str   =  prompt.prompt_do(prompt.options_add(options)).message
     return f"{CY}({settings.mongosettings.MD_sessionUser}@smash){NC}{pathColor}$>"
 
+
+def command_get(options:Namespace) -> str:
+    user_choice:str = tabc.choice_get(options)
+    fscmd:str       = f"{tabc.fscmd} {user_choice}".strip()
+    # pudb.set_trace()
+    return fscmd
+
 def meta_parse(command:str) -> str:
     output:str  = ""
     if 'quit' in command.lower() or 'exit' in command.lower():
@@ -155,7 +163,8 @@ def smash(ctx:click.Context, prompt) -> None:
     while True:
         print(smash_execute(
                 command_parse(
-                    input(prompt_get(options)
-                )
-            ), pipe_handler))
+                    command_get(options)
+                ),
+                pipe_handler)
+        )
 
