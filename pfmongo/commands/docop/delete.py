@@ -1,74 +1,85 @@
-import  click
-import  pudb
-from    pfmongo                 import  driver
-from    argparse                import  Namespace
-from    pfmongo                 import  env
-from    pfmisc                  import  Colors as C
-from    pfmongo.config          import  settings
-from    pfmongo.commands.clop   import  connect
-from    pfmongo.models          import  responseModel
-from    typing                  import  cast
-import  copy
+import click
+import pudb
+from pfmongo import driver
+from argparse import Namespace
+from pfmongo import env
+from pfmisc import Colors as C
+from pfmongo.config import settings
+from pfmongo.commands.clop import connect
+from pfmongo.models import responseModel
+from typing import cast
+import copy
 
-NC  = C.NO_COLOUR
-GR  = C.GREEN
-CY  = C.CYAN
-PL  = C.PURPLE
-YL  = C.YELLOW
+NC = C.NO_COLOUR
+GR = C.GREEN
+CY = C.CYAN
+PL = C.PURPLE
+YL = C.YELLOW
 
-def options_add(id:str, options:Namespace) -> Namespace:
-    localoptions:Namespace  = copy.deepcopy(options)
-    localoptions.do          = 'deleteDocument'
-    localoptions.argument    = id
+
+def options_add(id: str, options: Namespace) -> Namespace:
+    localoptions: Namespace = copy.deepcopy(options)
+    localoptions.do = "deleteDocument"
+    localoptions.argument = id
     return localoptions
 
-def env_check(options:Namespace) -> int:
+
+def env_check(options: Namespace) -> int:
     if env.env_failCheck(options):
         return 100
     return 0
 
+
 def run_check(
-        failData:int, message:str = "early failure"
+    failData: int, message: str = "early failure"
 ) -> responseModel.mongodbResponse:
-    retm:responseModel.mongodbResponse  = responseModel.mongodbResponse()
+    retm: responseModel.mongodbResponse = responseModel.mongodbResponse()
     if failData:
-        retm.message    = f' {message} (code {failData}) occurred in document delete'
+        retm.message = f" {message} (code {failData}) occurred in document delete"
     else:
-        retm.status     = True
-        retm.message    = 'Initial run_check in document delete ok'
+        retm.status = True
+        retm.message = "Initial run_check in document delete ok"
     return retm
 
-def delete_do(options:Namespace) -> responseModel.mongodbResponse:
-    failEnv:int         = 0
-    if (failEnv := env_check(options)):
-        return run_check(failEnv, 'failure in document del setup')
-    delResp:responseModel.mongodbResponse   = responseModel.mongodbResponse()
-    if not (delResp:=driver.run_modelReturn(
-        connect.baseCollection_getAndConnect(options))
+
+def delete_do(options: Namespace) -> responseModel.mongodbResponse:
+    failEnv: int = 0
+    if failEnv := env_check(options):
+        return run_check(failEnv, "failure in document del setup")
+    delResp: responseModel.mongodbResponse = responseModel.mongodbResponse()
+    if not (
+        delResp := driver.run_modelReturn(connect.baseCollection_getAndConnect(options))
     ).status:
         return delResp
     print(delResp.message)
     if not settings.appsettings.donotFlatten:
-        delResp = driver.run_modelReturn(connect.shadowCollection_getAndConnect(options))
+        delResp = driver.run_modelReturn(
+            connect.shadowCollection_getAndConnect(options)
+        )
     return delResp
 
-def deleteDo_asInt(options:Namespace) -> int:
-    delResp:responseModel.mongodbResponse           = delete_do(options)
-    docDelUse:responseModel.DocumentDeleteUsage     = responseModel.DocumentDeleteUsage()
-    docDelUse.status                                = delResp.status
+
+def deleteDo_asInt(options: Namespace) -> int:
+    delResp: responseModel.mongodbResponse = delete_do(options)
+    docDelUse: responseModel.DocumentDeleteUsage = responseModel.DocumentDeleteUsage()
+    docDelUse.status = delResp.status
     return env.response_exitCode(docDelUse)
 
-def deleteDo_asModel(options:Namespace) -> responseModel.mongodbResponse:
+
+def deleteDo_asModel(options: Namespace) -> responseModel.mongodbResponse:
     return delete_do(options)
 
-@click.command(cls = env.CustomCommand, help=f"""
-remove a {YL}document{NC} from a collection
+
+@click.command(
+    cls=env.CustomCommand,
+    help=f"""
+remove a {PL}document{NC} from a collection
 
 SYNOPSIS
 {CY}delete {GR}--id {YL}<id>{NC}
 
 DESC
-This subcommand removes a {YL}document{NC} identified by {YL}<id>{NC} from a collection.
+This subcommand removes a {PL}document{NC} identified by {YL}<id>{NC} from a collection.
 
 The "location" is defined by the core parameters, 'useDB' and 'useCollection'
 which are typically defined in the CLI, in the system environment, or in the
@@ -76,14 +87,12 @@ session state.
 
 Use with care. No confirmation is asked!
 
-""")
-@click.option('--id',
-    type  = str,
-    help  = \
-    "Delete the document with the passed 'id'",
-    default = '')
+""",
+)
+@click.option(
+    "--id", type=str, help="Delete the document with the passed 'id'", default=""
+)
 @click.pass_context
-def delete(ctx:click.Context, id:str="") -> int:
+def delete(ctx: click.Context, id: str = "") -> int:
     # pudb.set_trace()
-    return deleteDo_asInt(options_add(id, ctx.obj['options']))
-
+    return deleteDo_asInt(options_add(id, ctx.obj["options"]))
