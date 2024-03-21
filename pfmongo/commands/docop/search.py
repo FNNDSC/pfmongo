@@ -4,8 +4,8 @@ from pfmongo import driver, env
 from argparse import Namespace
 from pfmisc import Colors as C
 from pfmongo.models import responseModel
-from typing import cast
-
+from typing import Required, cast
+import copy
 from pfmongo.commands.clop import connect
 
 NC = C.NO_COLOUR
@@ -16,13 +16,14 @@ PL = C.PURPLE
 
 
 def options_add(target: str, field: str, options: Namespace) -> Namespace:
-    options.do = "searchDocument"
-    options.argument = {
+    localoptions: Namespace = copy.deepcopy(options)
+    localoptions.do = "searchDocument"
+    localoptions.argument = {
         "field": field,
         "searchFor": target.split(","),
         "collection": connect.baseCollection_getAndConnect(options).collectionName,
     }
-    return options
+    return localoptions
 
 
 def documentSearch_asInt(options: Namespace) -> int:
@@ -63,6 +64,7 @@ document {YL}_id{NC}.
     type=str,
     help="List the search hits referenced by this field",
     default="_id",
+    required=False,
 )
 @click.pass_context
 def search(ctx: click.Context, target: str, field: str) -> int:
