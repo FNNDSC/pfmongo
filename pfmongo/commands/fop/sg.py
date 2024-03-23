@@ -24,7 +24,6 @@ def options_add(target: str, options: Namespace) -> Namespace:
         "searchFor": target.split(","),
         "collection": connect.baseCollection_getAndConnect(options).collectionName,
     }
-    localoptions.beQuiet = True
     return localoptions
 
 
@@ -53,5 +52,5 @@ primitive and simple search across documents, returning the names of documents
 @click.pass_context
 @click.argument("pattern", required=True)
 def sg(ctx: click.Context, pattern: str) -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     return sg_asInt(options_add(pattern, ctx.obj["options"]))
