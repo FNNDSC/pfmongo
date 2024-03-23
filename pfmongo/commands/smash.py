@@ -31,7 +31,24 @@ GR = C.GREEN
 CY = C.CYAN
 YL = C.YELLOW
 
-fscommand: list = ["ls", "cat", "rm", "cd", "mkcd", "imp", "exp", "prompt", "pwd"]
+fscommand: list = [
+    "sg",
+    "ls",
+    "cat",
+    "rm",
+    "cd",
+    "mkcd",
+    "imp",
+    "exp",
+    "prompt",
+    "pwd",
+    "quit",
+    "exit",
+    "fortune",
+    "banner",
+]
+
+fscommand_noArgs: list = ["prompt", "pwd", "quit", "exit"]
 
 
 def pipe_split(command: str) -> list:
@@ -99,8 +116,8 @@ def prompt_get(options: Namespace) -> str:
 
 
 def command_get(options: Namespace) -> str:
-    user_choice: str = tabc.choice_get(options)
-    fscmd: str = f"{tabc.fscmd} {user_choice}".strip()
+    userInput: str = tabc.userInput_get(options)
+    fscmd: str = f"{userInput}".strip()
     # pudb.set_trace()
     return fscmd
 
