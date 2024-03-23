@@ -1,129 +1,134 @@
-import  click
-from    pfmongo         import  driver, env
-from    argparse        import  Namespace
-from    pfmisc          import  Colors as C
-from    pfmongo.models  import  fsModel, responseModel
-from    pathlib         import  Path
-import  ast
-import  pudb
-import  copy
+import click
+from pfmongo import driver, env
+from argparse import Namespace
+from pfmisc import Colors as C
+from pfmongo.models import fsModel, responseModel
+from pathlib import Path
+import ast
+import pudb
+import copy
 
-import  pfmongo.commands.smash      as smash
-import  pfmongo.commands.fop.cd     as cd
-from    pfmongo.commands.document   import showAll as doc
-from    pfmongo.commands.database   import showAll as db
-from    pfmongo.commands.collection import showAll as col
-from    pfmongo.commands.fop.pwd    import pwd_level
+import pfmongo.commands.smash as smash
+import pfmongo.commands.fop.cd as cd
+from pfmongo.commands.document import showAll as doc
+from pfmongo.commands.database import showAll as db
+from pfmongo.commands.collection import showAll as col
+from pfmongo.commands.fop.pwd import pwd_level
 
-from    types                       import SimpleNamespace
-import  fontawesome                 as fa
+from types import SimpleNamespace
+import fontawesome as fa
 
-NC  = C.NO_COLOUR
-GR  = C.GREEN
-CY  = C.CYAN
-PL  = C.PURPLE
-YL  = C.YELLOW
+NC = C.NO_COLOUR
+GR = C.GREEN
+CY = C.CYAN
+PL = C.PURPLE
+YL = C.YELLOW
 
-def options_add(path:str, attribs:str, long:bool, options:Namespace) -> Namespace:
-    localoptions            = copy.deepcopy(options)
-    localoptions.do         = 'ls'
-    localoptions.beQuiet    = True
+
+def options_add(path: str, attribs: str, long: bool, options: Namespace) -> Namespace:
+    localoptions = copy.deepcopy(options)
+    localoptions.do = "ls"
+    localoptions.beQuiet = True
     if not path:
-        path                = '.'
-    localoptions.argument   = SimpleNamespace(**{
-            "path":     Path(path),
-            "attribs":  attribs,
-            "long":     long
-    })
+        path = "."
+    localoptions.argument = SimpleNamespace(
+        **{"path": Path(path), "attribs": attribs, "long": long}
+    )
     return localoptions
 
-def objectSymbol_resolve(resp:responseModel.mongodbResponse) -> str:
-    symbol:str  = ""
-    match type(resp.response['connect']):
+
+def objectSymbol_resolve(resp: responseModel.mongodbResponse) -> str:
+    symbol: str = ""
+    match type(resp.response["connect"]):
         case responseModel.showAllDBusage:
-            symbol  = fa.icons['database']
+            symbol = fa.icons["database"]
         case responseModel.showAllcollectionsUsage:
-            symbol  = fa.icons['table']
+            symbol = fa.icons["table"]
         case responseModel.DocumentListUsage:
-            symbol  = fa.icons['file']
+            symbol = fa.icons["file"]
         case _:
-            symbol  = fa.icons['file']
+            symbol = fa.icons["file"]
     return symbol + " "
 
-def resp_process(resp:responseModel.mongodbResponse) -> str:
-    rstr:str    = ""
-    file:list   = ast.literal_eval(resp.message)
+
+def resp_process(resp: responseModel.mongodbResponse) -> str:
+    rstr: str = ""
+    file: list = ast.literal_eval(resp.message)
     # pudb.set_trace()
     for f in file:
-        rstr   += objectSymbol_resolve(resp) + f + '  '
+        rstr += objectSymbol_resolve(resp) + f + "  "
     return rstr
 
-def ls_db(options:Namespace) -> responseModel.mongodbResponse :
-    resp    = db.showAll_asModel(
-                driver.settmp(
-                    db.options_add(options),
-                    [{'beQuiet': True}]
-                )
-            )
+
+def ls_db(options: Namespace) -> responseModel.mongodbResponse:
+    resp = db.showAll_asModel(
+        driver.settmp(db.options_add(options), [{"beQuiet": True}])
+    )
     return resp
 
-def ls_collection(options:Namespace) -> responseModel.mongodbResponse :
-    resp    = col.showAll_asModel(
-                driver.settmp(
-                    col.options_add(options),
-                    [{'beQuiet': True}]
-                )
-            )
+
+def ls_collection(options: Namespace) -> responseModel.mongodbResponse:
+    resp = col.showAll_asModel(
+        driver.settmp(col.options_add(options), [{"beQuiet": True}])
+    )
     return resp
 
-def ls_doc(options:Namespace) -> responseModel.mongodbResponse:
-    resp    = doc.showAll_asModel(
-                driver.settmp(
-                    doc.options_add('_id', options),
-                    [{'beQuiet': True}]
-                )
-            )
+
+def ls_doc(options: Namespace) -> responseModel.mongodbResponse:
+    resp = doc.showAll_asModel(
+        driver.settmp(doc.options_add("_id", options), [{"beQuiet": True}])
+    )
     return resp
 
-def ls_do(options:Namespace) -> tuple[int, responseModel.mongodbResponse]:
-    cwd:Path                            = smash.cwd(options)
-    resp:responseModel.mongodbResponse  = responseModel.mongodbResponse()
-    cdResp:fsModel.cdResponse           = fsModel.cdResponse()
+
+def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]:
+    cwd: Path = smash.cwd(options)
+    resp: responseModel.mongodbResponse = responseModel.mongodbResponse()
+    cdResp: fsModel.cdResponse = fsModel.cdResponse()
     # pudb.set_trace()
     # cd.changeDirectory(cd.options_add(options.argument.path, options))
-    if not (cdResp:=cd.toDir(
-                cd.fullPath_resolve(
-                    cd.options_add(options.argument.path, options)
-                )
-            )).status:
-        resp.message    = cdResp.message
+    if not (
+        cdResp := cd.toDir(
+            cd.fullPath_resolve(cd.options_add(options.argument.path, options))
+        )
+    ).status:
+        resp.message = cdResp.message
         return 1, resp
     match pwd_level(options):
-        case "root":        resp    = ls_db(options)
-        case "database":    resp    = ls_collection(options)
-        case "collection":  resp    = ls_doc(options)
-        case "_":           resp    = ls_db(options)
+        case "root":
+            resp = ls_db(options)
+        case "database":
+            resp = ls_collection(options)
+        case "collection":
+            resp = ls_doc(options)
+        case "_":
+            resp = ls_db(options)
     if not options.beQuiet:
         resp_process(resp)
-    ret:int     = 0
+    ret: int = 0
     if not resp.message:
-        ret     = 1
+        ret = 1
     cd.changeDirectory(cd.options_add(str(cwd), options))
     return ret, resp
 
-def ls_asInt(options:Namespace) -> int:
-    ret, resp   = ls_do(options)
+
+def ls_asInt(options: Namespace) -> int:
+    ret, resp = ls_do(options)
     return ret
 
-def ls_asModel(options:Namespace) -> responseModel.mongodbResponse:
-    ret, resp   = ls_do(options)
+
+def ls_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    ret, resp = ls_do(options)
     return resp
 
-@click.command(cls = env.CustomCommand, help=f"""
+
+@click.command(
+    cls=env.CustomCommand,
+    help=f"""
 list {YL}path{NC}
 
 SYNOPSIS
-{CY}ls {YL}[--long] ]--human] <path>{NC}
+{CY}ls {YL}[--long] [--human] [<path>]{NC}
 
 ARGS
 This command lists the objects (files and directories) that are at a given
@@ -137,17 +142,18 @@ This assumes that the document entry has these fields encoded, which is only
 true for files uploaded using {YL}pfmongo{NC}.
 
 
-""")
-@click.argument('path',
-                required = False)
-@click.option('--attribs',  required = False,
-              help      = 'A comma separated list of file attributes to return/print')
-@click.option('--long',
-              is_flag   = True,
-              help      = 'If set, use a long listing format')
+""",
+)
+@click.argument("path", required=False)
+@click.option(
+    "--attribs",
+    required=False,
+    help="A comma separated list of file attributes to return/print",
+)
+@click.option("--long", is_flag=True, help="If set, use a long listing format")
 @click.pass_context
-def ls(ctx:click.Context, path:str, attribs:str, long:bool) -> int:
+def ls(ctx: click.Context, path: str, attribs: str, long: bool) -> int:
     # pudb.set_trace()
-    ret, resp   = ls_do(options_add(path, attribs, long, ctx.obj['options']))
+    ret, resp = ls_do(options_add(path, attribs, long, ctx.obj["options"]))
     print(resp_process(resp))
-    return  ret
+    return ret
