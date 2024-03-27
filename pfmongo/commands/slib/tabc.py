@@ -8,6 +8,8 @@ import ast
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import NestedCompleter
 from prompt_toolkit.formatted_text import ANSI
+from prompt_toolkit.layout import Layout, HSplit, VSplit, FloatContainer, Float
+import re
 
 
 def fileList_get(options: Namespace) -> list[str]:
@@ -15,9 +17,14 @@ def fileList_get(options: Namespace) -> list[str]:
     lsRet: int = 0
     lsResp: responseModel.mongodbResponse
     lsRet, lsResp = ls.ls_do(ls.options_add("", "", False, options))
+
     if lsRet:
         return lsFiles
-    lsFiles = ast.literal_eval(lsResp.message)
+    try:
+        lsFiles = ast.literal_eval(lsResp.message)
+    except Exception as e:
+        print("error: parsing this 'directory' resulted in a literal_eval exception.")
+        print("There might be improperly stored objects.")
     return lsFiles
 
 
