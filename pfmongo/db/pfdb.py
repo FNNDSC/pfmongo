@@ -22,7 +22,7 @@ from pfmongo import env
 
 from motor import motor_asyncio as AIO
 from motor.core import AgnosticCursor
-
+from bson import ObjectId
 import hashlib
 import copy
 import re
@@ -314,6 +314,13 @@ class mongoCollection:
         # pudb.set_trace()
         return l_hits
 
+    def hash_excludeKeyVal(self, d_hash: dict) -> dict:
+        d_hashEx: dict = copy.deepcopy(d_hash)
+        keysToClear: list[str] = ["_id", "_date", "_size", "_owner"]
+        d_cleared: dict[str, str] = {key: "" for key in keysToClear}
+        d_hashEx.update(d_cleared)
+        return d_hashEx
+
     def hash_addToDocument(self, d_doc: dict, l_onlyUsekeys: list = []) -> dict:
         d_newDict: dict = copy.deepcopy(d_doc)
         d_toHash: dict = {}
@@ -321,6 +328,7 @@ class mongoCollection:
             d_toHash = {k: d_doc[k] for k in l_onlyUsekeys}
         else:
             d_toHash = d_doc
+        d_toHash = self.hash_excludeKeyVal(d_toHash)
         d_sorted: dict = dict(sorted(d_toHash.items()))
         hash = hashlib.sha256(str(d_sorted).encode()).hexdigest()
         d_newDict["hash"] = hash
@@ -328,7 +336,7 @@ class mongoCollection:
 
     async def is_duplicate(self, d_doc: dict) -> bool:
         b_ret: bool = False
-        if not "hash" in d_doc.keys():
+        if "hash" not in d_doc.keys():
             return b_ret
         l_hits: list = await self.search_on({"hash": d_doc["hash"]})
         if len(l_hits):
@@ -361,7 +369,7 @@ class mongoCollection:
         return d_resp
 
     async def document_delete(self, id: str) -> dict:
-        # pudb.set_trace()
+        pudb.set_trace()
         d_resp: dict = {
             "acknowledged": False,
             "deleted_count": -1,
@@ -372,14 +380,21 @@ class mongoCollection:
         query: dict = {"_id": id}
         raw_result: Mapping[str, int] = {"n": 1}
         resp: results.DeleteResult = results.DeleteResult(raw_result, False)
-        try:
-            resp: results.DeleteResult = await self.collection.delete_one(query)
-        except Exception as e:
-            d_resp["error"] = "%s" % e
-        d_resp["acknowledged"] = resp.acknowledged
-        d_resp["deleted_count"] = resp.deleted_count
-        d_resp["database"] = self.DB.name
-        d_resp["collection"] = self.collection.name
+        for _ in range(0, 2):
+            try:
+                resp = await self.collection.delete_one(query)
+            except Exception as e:
+                d_resp["error"] = "%s" % e
+            d_resp["acknowledged"] = resp.acknowledged
+            d_resp["deleted_count"] = resp.deleted_count
+            d_resp["database"] = self.DB.name
+            d_resp["collection"] = self.collection.name
+            if resp.deleted_count:
+                break
+            try:
+                query = {"_id": ObjectId(id)}
+            except Exception as e:
+                break
         return d_resp
 
     async def document_get(self, id: str) -> dict:
@@ -392,12 +407,19 @@ class mongoCollection:
             "error": "",
         }
         query: dict = {"_id": id}
-        document: Optional[dict[str, Any]] = await self.collection.find_one(query)
-        if document:
-            d_resp["acknowledged"] = True
-            d_resp["document"] = document
-            d_resp["database"] = self.DB.name
-            d_resp["collection"] = self.collection.name
+        for _ in range(0, 2):
+            document: Optional[dict[str, Any]] = await self.collection.find_one(query)
+            if document:
+                document["_id"] = str(document["_id"])
+                d_resp["acknowledged"] = True
+                d_resp["document"] = document
+                d_resp["database"] = self.DB.name
+                d_resp["collection"] = self.collection.name
+                break
+            try:
+                query = {"_id": ObjectId(id)}
+            except Exception as e:
+                break
         return d_resp
 
     async def document_list(self, field: str) -> dict:
