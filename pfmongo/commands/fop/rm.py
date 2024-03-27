@@ -128,5 +128,5 @@ to delete.
 @click.pass_context
 @click.argument("path", required=False)
 def rm(ctx: click.Context, path: str) -> int:
-    pudb.set_trace()
+    # pudb.set_trace()
     return rm_asInt(options_add(path, ctx.obj["options"]))
