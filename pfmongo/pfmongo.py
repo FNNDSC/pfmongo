@@ -20,7 +20,7 @@ from pfmongo.config import settings
 from pfmongo.db import pfdb
 from pfmongo.models import responseModel
 from pfmongo import env
-
+import copy
 
 NC = C.NO_COLOUR
 YL = C.YELLOW
@@ -106,10 +106,10 @@ package_argSynopsisSelf = f"""
         Use the collection called <collectionName>.
 
         {YL}[--noHashing>]{NC}
-        If set, do not added payload hashes to documents. By default a hash of
+        If set, do not add payload hashes to documents. By default a hash of
         the document is calculated and added as a field when saved to a
         collection. This hash serves as a "fingerprint" of the document
-        assuring uniqueness.
+        assuring _content_ uniqueness.
 
         {YL}[--noDuplicates]{NC}
         If set, and in combination with --noHashing, will not allow a new
@@ -314,7 +314,7 @@ def parser_JSONinterpret(parser, d_JSONargs) -> tuple:
     """
     l_args = []
     for k, v in d_JSONargs.items():
-        if type(v) == type(True):
+        if v.isinstance(bool):
             if v:
                 l_args.append("--%s" % k)
             continue
@@ -323,11 +323,13 @@ def parser_JSONinterpret(parser, d_JSONargs) -> tuple:
     return parser_interpret(parser, l_args)
 
 
-def options_initialize() -> Namespace:
+def options_initialize(override: list[dict] = []) -> Namespace:
     """initialize a set of "options" with defaults"""
     options: Namespace = Namespace()
     parser: ArgumentParser = parser_setup("A client parser for pfmongo", add_help=False)
     options, extra = parser_interpret(parser, [])
+    if len(override):
+        options = options_set(options, override)
     env.env_statePathSet(options)
     return options
 
@@ -354,6 +356,19 @@ def responseData_build(
     d_resp.response = d_mongoresp
     d_resp.message = message
     return d_resp
+
+
+def options_set(options: Namespace, newkeyvaluepair: list) -> Namespace:
+    """
+    set some values (newkeyvaluepair) in a copy of
+    <options> and return this copy. Note the original
+    <options> is not affected.
+    """
+    localoptions = copy.deepcopy(options)
+    for pair in newkeyvaluepair:
+        for k, v in pair.items():
+            setattr(localoptions, k, v)
+    return localoptions
 
 
 class Pfmongo:
