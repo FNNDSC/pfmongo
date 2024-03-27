@@ -7,7 +7,8 @@ from pathlib import Path
 import ast
 import pudb
 import copy
-
+import re
+import fnmatch
 import pfmongo.commands.smash as smash
 import pfmongo.commands.fop.cd as cd
 from pfmongo.commands.document import showAll as doc
@@ -74,11 +75,40 @@ def ls_collection(options: Namespace) -> responseModel.mongodbResponse:
     return resp
 
 
+def file_filter(
+    resp: responseModel.mongodbResponse, options: Namespace
+) -> responseModel.mongodbResponse:
+    if options.argument.path != Path("."):
+        files: list[str] = eval(resp.message)
+        filtered: list[str] = [
+            e for e in files if fnmatch.fnmatch(e, options.argument.path)
+        ]
+        resp.message = "[" + ", ".join([f"'{e}'" for e in filtered]) + "]"
+    return resp
+
+
 def ls_doc(options: Namespace) -> responseModel.mongodbResponse:
     resp = doc.showAll_asModel(
         driver.settmp(doc.options_add("_id", options), [{"beQuiet": True}])
     )
+    if resp.message:
+        resp.message = ls_msgParse(resp.message)
     return resp
+
+
+def ls_msgParse(lstr: str) -> str:
+    return re.sub(r"ObjectId\('([\w]+)'\)", r"'\1'", lstr)
+
+
+def ls_fargsUpdate(options: Namespace) -> Namespace:
+    localoptions: Namespace = copy.deepcopy(options)
+    cwdSet: set[str] = set(smash.cwd(options).parts[-1:])
+    argSet: set[str] = set(options.argument.path.parts[-1:])
+    try:
+        localoptions.argument.path = (argSet - cwdSet).pop()
+    except KeyError:
+        localoptions.argument.path = Path(".")
+    return localoptions
 
 
 def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]:
@@ -92,17 +122,20 @@ def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]:
             cd.fullPath_resolve(cd.options_add(options.argument.path, options))
         )
     ).status:
-        resp.message = cdResp.message
+        resp.message = cdResp.message + " " + cdResp.error
         return 1, resp
-    match pwd_level(options):
+
+    loptions = ls_fargsUpdate(options)
+    match pwd_level(loptions):
         case "root":
-            resp = ls_db(options)
+            resp = ls_db(loptions)
         case "database":
-            resp = ls_collection(options)
+            resp = ls_collection(loptions)
         case "collection":
-            resp = ls_doc(options)
+            resp = ls_doc(loptions)
         case "_":
-            resp = ls_db(options)
+            resp = ls_db(loptions)
+    file_filter(resp, loptions)
     if not options.beQuiet:
         resp_process(resp)
     ret: int = 0
