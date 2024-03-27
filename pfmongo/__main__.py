@@ -12,36 +12,37 @@ __version__ = "0.9.100"
 from os.path import normpath
 import sys
 
-from    pfmongo             import pfmongo
-from    pfmongo             import env
-from    pfmongo.commands    import fs
-from    pfmongo.pfmongo     import parser_setup, parser_interpret, parser_JSONinterpret
+from pfmongo import pfmongo
+from pfmongo import env
+from pfmongo.commands import fs
+from pfmongo.pfmongo import parser_setup, parser_interpret, parser_JSONinterpret
 
 try:
-    from    .               import __pkg, __version__
+    from . import __pkg, __version__
 except:
-    from pfmongo            import __pkg, __version__
+    from pfmongo import __pkg, __version__
 
-from    argparse            import ArgumentParser, Namespace
-import  pudb
-from    pfmisc              import Colors as C
-from    typing              import Any, Literal
-from    pfmongo.config      import settings
-from    pfmongo.models      import dataModel
-from    pathlib             import Path
-import  appdirs
-import  click
-from    click.formatting    import wrap_text
+from argparse import ArgumentParser, Namespace
+import pudb
+from pfmisc import Colors as C
+from typing import Any, Literal, Sequence
+from pfmongo.config import settings
+from pfmongo.models import dataModel
+from pathlib import Path
+import appdirs
+import click
+from click.formatting import wrap_text
 
-from    pfmongo.commands    import database, collection, fs, man, state, document, smash
+from pfmongo.commands import database, collection, fs, man, state, document, smash
 
-NC  = C.NO_COLOUR
-GR  = C.GREEN
-CY  = C.CYAN
+NC = C.NO_COLOUR
+GR = C.GREEN
+CY = C.CYAN
 
-options:Namespace               = Namespace()
+options: Namespace = Namespace()
 
-def sysargv_revamp(newarg:list[str]) ->list[str]:
+
+def sysargv_revamp(newarg: list[str]) -> list[str]:
     """
     Small but crucial method for "revamping" the sys.argv list that
     is passed to the main click function.
@@ -51,13 +52,14 @@ def sysargv_revamp(newarg:list[str]) ->list[str]:
 
     :param newarg: a string list of "new" arguments
     """
-    executable:str              = sys.argv[0]
-    sys.argv                    = []
+    executable: str = sys.argv[0]
+    sys.argv = []
     sys.argv.append(executable)
     sys.argv.extend(newarg)
     return sys.argv
 
-def main(argv:list[str]=[]) -> int:
+
+def main(argv: Sequence[str] = []) -> int:
     """
     The main entry point to the program. Can also be called from Python by
     passing along a "pseudo" argv list of strings (note the first element of
@@ -74,14 +76,13 @@ def main(argv:list[str]=[]) -> int:
     """
     global options
     # pudb.set_trace()
-    add_help:bool               = False
-    parser:ArgumentParser       = parser_setup(
-                                    'A client for interacting with mongo DBs',
-                                    add_help
-                                )
+    add_help: bool = False
+    parser: ArgumentParser = parser_setup(
+        "A client for interacting with mongo DBs", add_help
+    )
 
     # Should we show (and exit) some man page help?
-    options, extra              = parser_interpret(parser, argv)
+    options, extra = parser_interpret(parser, argv)
 
     if not env.env_statePathSet(options):
         return 10
@@ -91,19 +92,15 @@ def main(argv:list[str]=[]) -> int:
         return man.man(options)
 
     # the click "app" interprets sys.argv, hence the revamping here
-    newargv:list[str]           = sysargv_revamp(extra)
-    return(app())
+    newargv: list[str] = sysargv_revamp(extra)
+    return app()
 
-@click.group(cls = env.CustomGroup, help = pfmongo.package_description)
-@click.option('--man',
-              is_flag   = True,
-              help      = 'show more detail about core OPTIONS')
-@click.option('--version',
-              is_flag   = True,
-              help      = 'show program version')
+
+@click.group(cls=env.CustomGroup, help=pfmongo.package_description)
+@click.option("--man", is_flag=True, help="show more detail about core OPTIONS")
+@click.option("--version", is_flag=True, help="show program version")
 @click.pass_context
-def app(ctx:click.Context,
-        man:bool, version:bool) -> int:
+def app(ctx: click.Context, man: bool, version: bool) -> int:
     """
     The main "app" -- it mostly serves as a point to route to the
     various subcommands and provide some in-line help.
@@ -119,12 +116,13 @@ def app(ctx:click.Context,
     """
 
     global options
-    ctx.obj                     = {}
-    ctx.obj['options']          = options
+    ctx.obj = {}
+    ctx.obj["options"] = options
 
-    subcommand:str|None         = click.get_current_context().invoked_subcommand
+    subcommand: str | None = click.get_current_context().invoked_subcommand
 
     return 0
+
 
 app.add_command(database.database)
 app.add_command(collection.collection)
@@ -132,5 +130,4 @@ app.add_command(fs.fs)
 app.add_command(state.state)
 app.add_command(document.document)
 app.add_command(smash.smash)
-#app.add_command(man.man)
-
+# app.add_command(man.man)
