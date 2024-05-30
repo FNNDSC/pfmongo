@@ -22,4 +22,6 @@ appdirs
 tabulate
 fortune-python
 fontawesome
+rich
+
 
