@@ -369,7 +369,6 @@ class mongoCollection:
         return d_resp
 
     async def document_delete(self, id: str) -> dict:
-        pudb.set_trace()
         d_resp: dict = {
             "acknowledged": False,
             "deleted_count": -1,

@@ -21,6 +21,7 @@ def options_add(id: str, options: Namespace) -> Namespace:
     localoptions: Namespace = copy.deepcopy(options)
     localoptions.do = "deleteDocument"
     localoptions.argument = id
+    localoptions.beQuiet = True
     return localoptions
 
 
