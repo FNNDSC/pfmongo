@@ -7,7 +7,7 @@
 #                        dev@babyMRI.org
 #
 
-__version__ = "0.9.110"
+__version__ = "0.9.112"
 
 from os.path import normpath
 import sys
