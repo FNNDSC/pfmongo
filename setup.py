@@ -63,7 +63,12 @@ setup(
     data_files=[
         ("", ["requirements.txt"]),
     ],
-    entry_points={"console_scripts": ["pfmongo = pfmongo.__main__:main"]},
+    entry_points={
+        "console_scripts": [
+            "pfmongo = pfmongo.__main__:main",
+            "smashes = pfmongo.smashes:main",
+        ]
+    },
     license="MIT",
     zip_safe=False,
 )
