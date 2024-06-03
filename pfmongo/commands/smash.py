@@ -32,6 +32,9 @@ CY = C.CYAN
 YL = C.YELLOW
 
 fscommand: list = [
+    "database",
+    "collection",
+    "document",
     "sg",
     "ls",
     "cat",
