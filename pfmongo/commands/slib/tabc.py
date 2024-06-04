@@ -28,7 +28,13 @@ def fileList_get(options: Namespace) -> list[str]:
     return lsFiles
 
 
-def userInput_get(options: Namespace) -> str:
+def userInput_get(options: Namespace, **kwargs) -> str:
+    noninteractive: str = ""
+    for k, v in kwargs.items():
+        if k == "noninteractive":
+            noninteractive = v
+    if noninteractive:
+        return noninteractive
     userInput: str = ""
     files: list[str] = fileList_get(options)
     sallcmds: set[str] = set(smash.fscommand)
