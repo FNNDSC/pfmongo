@@ -32,9 +32,6 @@ CY = C.CYAN
 YL = C.YELLOW
 
 fscommand: list = [
-    "database",
-    "collection",
-    "document",
     "sg",
     "ls",
     "cat",
@@ -118,8 +115,8 @@ def prompt_get(options: Namespace) -> str:
     return f"{CY}({settings.mongosettings.MD_sessionUser}@smash){NC}{pathColor}$>"
 
 
-def command_get(options: Namespace) -> str:
-    userInput: str = tabc.userInput_get(options)
+def command_get(options: Namespace, **kwargs) -> str:
+    userInput: str = tabc.userInput_get(options, **kwargs)
     fscmd: str = f"{userInput}".strip()
     # pudb.set_trace()
     return fscmd
@@ -129,9 +126,9 @@ def meta_parse(command: str) -> str:
     output: str = ""
     if "quit" in command.lower() or "exit" in command.lower():
         sys.exit(0)
-    if command == "banner":
+    if "banner" in command.lower():
         output = introbanner_generate()
-    if command == "fortune":
+    if "fortune" in command.lower():
         output = env.tabulate_message(fortune(), f"{YL}fortune{NC}")
     return output
 
