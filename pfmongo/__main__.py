@@ -15,7 +15,12 @@ import sys
 from pfmongo import pfmongo
 from pfmongo import env
 from pfmongo.commands import fs
-from pfmongo.pfmongo import parser_setup, parser_interpret, parser_JSONinterpret
+from pfmongo.pfmongo import (
+    options_initialize,
+    parser_setup,
+    parser_interpret,
+    parser_JSONinterpret,
+)
 
 try:
     from . import __pkg, __version__
@@ -32,7 +37,7 @@ from pathlib import Path
 import appdirs
 import click
 from click.formatting import wrap_text
-
+import re
 from pfmongo.commands import database, collection, fs, man, state, document, smash
 
 NC = C.NO_COLOUR
@@ -40,6 +45,11 @@ GR = C.GREEN
 CY = C.CYAN
 
 options: Namespace = Namespace()
+
+
+def namespace_pubattribs(space: Namespace) -> list[str]:
+    attributes: list[str] = re.findall(r"\b([A-Za-z][A-Za-z_0-9]*)=", str(space))
+    return attributes
 
 
 def sysargv_revamp(newarg: list[str]) -> list[str]:
@@ -116,6 +126,8 @@ def app(ctx: click.Context, man: bool, version: bool) -> int:
     """
 
     global options
+    if not namespace_pubattribs(options):
+        options = options_initialize()
     ctx.obj = {}
     ctx.obj["options"] = options
 
