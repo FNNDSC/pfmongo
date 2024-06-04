@@ -395,7 +395,7 @@ class Pfmongo:
 
     def __init__(self, args, **kwargs) -> None:
         self.args: Namespace = Namespace()
-        if type(args) is dict:
+        if isinstance(args, dict):
             parser: ArgumentParser = parser_setup("Setup client using dict")
             self.args, extra = parser_JSONinterpret(parser, args)
         if type(args) is Namespace:
