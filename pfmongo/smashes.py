@@ -73,8 +73,8 @@ def parser_interpret(parser: ArgumentParser, *args, **kwargs) -> Namespace:
         return options
     if len(args):
         if len(args[0]):
-            if isinstance(args[0][0], tuple):
-                options = parser.parse_args(args[0])
+            if isinstance(args[0][0], list):
+                options = parser.parse_args(args[0][0])
             elif isinstance(args[0][0], dict):
                 options = parser.parse_args(parser_JSONinterpret(args[0][0]))
         else:
