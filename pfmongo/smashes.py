@@ -6,6 +6,7 @@ from pfmongo import __main__
 from pfmongo.pfmongo import options_initialize
 from pfmongo.commands import smash
 import pudb
+from typing import Any
 
 
 TERMINATION_SEQUENCE = b"\r\n\r\n"
@@ -41,6 +42,13 @@ def parser_setup(str_desc: str = "") -> ArgumentParser:
     )
 
     parser.add_argument(
+        "--response",
+        type=str,
+        default="string",
+        help="response type: either a 'string' or 'dict'",
+    )
+
+    parser.add_argument(
         "--msg", type=str, default="", help="message to transmit in client mode"
     )
 
@@ -52,7 +60,7 @@ def parser_interpret(parser: ArgumentParser, *args, **kwargs) -> Namespace:
     Interpret the list space of *args, or sys.argv[1:] if
     *args is empty
     """
-    options: Namespace
+    options: Namespace = Namespace()
     asModule: bool = False
     for k, v in kwargs.items():
         if k == "asModule":
@@ -64,10 +72,33 @@ def parser_interpret(parser: ArgumentParser, *args, **kwargs) -> Namespace:
         options, unknown = parser.parse_known_args()
         return options
     if len(args):
-        options = parser.parse_args(*args[1:])
-    else:
-        options = parser.parse_args(sys.argv[1:])
+        if len(args[0]):
+            if isinstance(args[0][0], tuple):
+                options = parser.parse_args(args[0])
+            elif isinstance(args[0][0], dict):
+                options = parser.parse_args(parser_JSONinterpret(args[0][0]))
+        else:
+            options = parser.parse_args(sys.argv[1:])
     return options
+
+
+def parser_JSONinterpret(d_JSONargs) -> list:
+    """
+    Interpret a JSON dictionary in lieu of CLI.
+
+    For each <key>:<value> in the d_JSONargs, append to
+    list two strings ["--<key>", "<value>"] and then
+    argparse.
+    """
+    l_args = []
+    for k, v in d_JSONargs.items():
+        if isinstance(v, bool):
+            if v:
+                l_args.append("--%s" % k)
+            continue
+        l_args.append("--%s" % k)
+        l_args.append("%s" % v)
+    return l_args
 
 
 class IPCclient:
@@ -121,6 +152,7 @@ class IPCserver:
             ret = response
         if isinstance(response, bytes):
             ret = response.decode()
+        print(f"{ret}")
         return ret
 
     def response_await(self) -> str:
@@ -159,14 +191,17 @@ def response_toConsole(resp: dict[str, str]) -> str:
     return resp["response"]
 
 
-def main(*args: list[str]) -> str:
-    resp: str
+def main(*args: list[Any]) -> str | dict[str, str]:
     options: Namespace = parser_interpret(parser_setup(), args)
+
+    dresp: dict[str, str]
     if options.server:
         server_handle(options)
 
-    resp = response_toConsole(client_handle(options))
-    return resp
+    dresp = client_handle(options)
+    if "string" in options.response:
+        return response_toConsole(dresp)
+    return dresp
 
 
 if __name__ == "__main__":
