@@ -3,7 +3,12 @@ import sys
 import socket
 from argparse import Namespace, ArgumentParser, RawTextHelpFormatter
 from pfmongo import __main__
+from pfmongo.pfmongo import options_initialize
 from pfmongo.commands import smash
+import pudb
+
+
+TERMINATION_SEQUENCE = b"\r\n\r\n"
 
 
 def parser_setup(str_desc: str = "") -> ArgumentParser:
@@ -77,7 +82,12 @@ class IPCclient:
         result: str = ""
         try:
             self.clientSocket.sendall(msg.encode())
-            response: bytes = self.clientSocket.recv(1024)
+            response: bytes = b""
+            while True:
+                chunk: bytes = self.clientSocket.recv(1024)
+                if not chunk:
+                    break
+                response += chunk
             if response:
                 result = response.decode()
             else:
@@ -101,8 +111,17 @@ class IPCserver:
         print(f"smashes server setup and listening on '{host}:{port}'")
 
     def response_process(self, incoming: str) -> str:
-        response: str = "This is the response"
-        return response
+        response: str | bytes
+        ret: str = ""
+        mdbOptions: Namespace = options_initialize()
+        response = smash.smash_execute(
+            smash.command_parse(smash.command_get(mdbOptions, noninteractive=incoming))
+        )
+        if isinstance(response, str):
+            ret = response
+        if isinstance(response, bytes):
+            ret = response.decode()
+        return ret
 
     def response_await(self) -> str:
         incoming: str = ""
@@ -110,7 +129,8 @@ class IPCserver:
         self.connection, self.clientAddress = self.serverSocket.accept()
         try:
             print(f"Connection from {self.clientAddress}")
-            data: bytes = self.connection.recv(1024)
+            data: bytes = b""
+            data = self.connection.recv(32768)
             if data:
                 incoming = data.decode()
                 print(f"Received: {incoming}")
@@ -135,13 +155,17 @@ def client_handle(options: Namespace) -> dict[str, str]:
     return client.message_sendAndReceive(options.msg)
 
 
-def main(*args: list[str]) -> dict[str, str]:
-    resp: dict[str, str]
+def response_toConsole(resp: dict[str, str]) -> str:
+    return resp["response"]
+
+
+def main(*args: list[str]) -> str:
+    resp: str
     options: Namespace = parser_interpret(parser_setup(), args)
     if options.server:
         server_handle(options)
 
-    resp = client_handle(options)
+    resp = response_toConsole(client_handle(options))
     return resp
 
 
