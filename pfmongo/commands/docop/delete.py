@@ -51,7 +51,8 @@ def delete_do(options: Namespace) -> responseModel.mongodbResponse:
     if not (
         delResp := driver.run_modelReturn(connect.baseCollection_getAndConnect(options))
     ).status:
-        return delResp
+        pass
+        # return delResp
     print(delResp.message)
     if not settings.appsettings.donotFlatten:
         delResp = driver.run_modelReturn(
