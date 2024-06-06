@@ -156,8 +156,14 @@ def event_setup(
 
         if not f_syncCallBack:
             # run it asynchronously..!
-            loop: AbstractEventLoop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop: AbstractEventLoop
+            # If an event loop already exists, use it!
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                # Else create a new loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
             loop.run_until_complete(mongodb.service())
         else:
             # else run it with a synchronous callback
