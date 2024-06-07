@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Coroutine
 from argparse import Namespace
 import asyncio
 from asyncio import AbstractEventLoop
@@ -130,8 +130,10 @@ def responseData_print(mongodb: MONGO) -> None:
 
 
 def event_setup(
-    options: Namespace, f_syncCallBack: Optional[Callable[[MONGO], MONGO]] = None
-) -> Callable[..., int | responseModel.mongodbResponse]:
+    options: Namespace,
+    f_syncCallBack: Optional[Callable[[MONGO], MONGO]] = None,
+    # ) -> Callable[..., int | responseModel.mongodbResponse]:
+) -> Callable[..., Coroutine[None, None, int | responseModel.mongodbResponse]]:
     # Create the mongodb object...
     mongodb: pfmongo.Pfmongo = pfmongo.Pfmongo(options)
 
@@ -144,7 +146,7 @@ def event_setup(
             case _:
                 return mongodb.exitCode
 
-    def run(**kwargs) -> int | responseModel.mongodbResponse:
+    async def run(**kwargs) -> int | responseModel.mongodbResponse:
         nonlocal mongodb
         printResponse: bool = False
         returnType: str = "int"
@@ -156,7 +158,8 @@ def event_setup(
 
         if not f_syncCallBack:
             # run it asynchronously..!
-            loop: AbstractEventLoop
+            loop: AbstractEventLoop = asyncio.get_event_loop()
+
             # If an event loop already exists, use it!
             try:
                 loop = asyncio.get_event_loop()
@@ -164,7 +167,12 @@ def event_setup(
                 # Else create a new loop
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-            loop.run_until_complete(mongodb.service())
+            task = loop.create_task(mongodb.service())
+            await task
+            # try:
+            #     loop.run_until_complete(mongodb.service())
+            # except Exception as e:
+            #     print(f"In event_setup/run: {e}")
         else:
             # else run it with a synchronous callback
             mongodb = f_syncCallBack(mongodb)
@@ -175,28 +183,29 @@ def event_setup(
     return run
 
 
-def do(
+async def do(
     options: Namespace,
     retType: str,
     f_syncCallBack: Optional[Callable[[MONGO], MONGO]] = None,
 ) -> int | responseModel.mongodbResponse:
     f = event_setup(options, f_syncCallBack)
-    return f(printResponse=True, returnType=retType)
+    return await f(printResponse=True, returnType=retType)
 
 
-def run_intReturn(
+async def run_intReturn(
     options: Namespace, f_syncCallBack: Optional[Callable[[MONGO], MONGO]] = None
 ) -> int:
-    if not isinstance((result := do(options, "int", f_syncCallBack)), int):
+    if not isinstance((result := await do(options, "int", f_syncCallBack)), int):
         raise TypeError("did not receive int as expected")
     return result
 
 
-def run_modelReturn(
+async def run_modelReturn(
     options: Namespace, f_syncCallBack: Optional[Callable[[MONGO], MONGO]] = None
 ) -> responseModel.mongodbResponse:
     if not isinstance(
-        (result := do(options, "model", f_syncCallBack)), responseModel.mongodbResponse
+        (result := await do(options, "model", f_syncCallBack)),
+        responseModel.mongodbResponse,
     ):
         raise TypeError("did not receive model as expected")
     return result
