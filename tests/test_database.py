@@ -54,14 +54,16 @@ def test_database_showall_main(capsys) -> None:
 def test_database_showall_moduleAsInt() -> None:
     """show all databases using a module call with an int return"""
 
-    ret: int = showAll.showAll_asInt(showAll.options_add(pfmongo.options_initialize()))
+    ret: int = showAll.sync_showAll_asInt(
+        showAll.options_add(pfmongo.options_initialize())
+    )
     assert ret == 0
 
 
 def test_database_showAll_moduleAsModel() -> None:
     """show all databases using a module call with model return"""
 
-    ret: responseModel.mongodbResponse = showAll.showAll_asModel(
+    ret: responseModel.mongodbResponse = showAll.sync_showAll_asModel(
         showAll.options_add(pfmongo.options_initialize())
     )
     assert "admin" in ret.message
