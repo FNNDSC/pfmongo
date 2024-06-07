@@ -343,8 +343,8 @@ def date_toUNIX(str_date: str) -> int:
     try:
         date_obj: datetime.datetime = datetime.datetime.strptime(str_date, "%Y-%m-%d")
         ret = int(date_obj.timestamp())
-    except:
-        pass
+    except Exception as e:
+        print(f"{e}")
     return ret
 
 
