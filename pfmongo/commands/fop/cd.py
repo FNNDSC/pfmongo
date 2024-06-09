@@ -52,10 +52,10 @@ def toDir(options: Namespace) -> fsModel.cdResponse:
     return changeDirectory(options_add(f"/{db}/{collection}", options))
 
 
-def fullPath_resolve(options: Namespace) -> Namespace:
-    def navigate_cd():
+async def fullPath_resolve(options: Namespace) -> Namespace:
+    async def navigate_cd() -> None:
         ups: str = "../"
-        path: Path = smash.cwd(options)
+        path: Path = await smash.cwd(options)
         cd = str(options.cd.path)
         if cd.startswith(ups):
             if not cd.endswith("/"):
@@ -63,7 +63,7 @@ def fullPath_resolve(options: Namespace) -> Namespace:
             levels_up: int = cd.count(ups)
             try:
                 path = path.parents[levels_up - 1] if levels_up > 1 else path.parent
-            except:
+            except Exception:
                 path = Path("/")
             cd = cd[len(ups) * levels_up :]
         options.cd.path = path / cd
@@ -80,11 +80,12 @@ def fullPath_resolve(options: Namespace) -> Namespace:
     if options.cd.path == Path("."):
         options.cd.path = smash.cwd(options)
     elif options.cd.path == Path(".."):
-        options.cd.path = smash.cwd(options).parent
+        path: Path = await smash.cwd(options)
+        options.cd.path = path.parent
     elif smash.cwd(options) == Path("/") and not str(options.cd.path).startswith(".."):
         options.cd.path = Path("/") / options.cd.path
     else:
-        navigate_cd()
+        await navigate_cd()
     return options
 
 
@@ -92,7 +93,7 @@ def db_isListed(db: str, options: Namespace) -> fsModel.cdResponse:
     fsPath: fsModel.cdResponse = fsModel.cdResponse()
     if (
         db
-        not in mdb.showAll_asModel(
+        not in mdb.sync_showAll_asModel(
             driver.settmp(options, [{"do": "showAllDB"}])
         ).message
     ):

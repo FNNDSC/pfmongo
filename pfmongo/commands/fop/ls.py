@@ -15,7 +15,7 @@ from pfmongo.commands.document import showAll as doc
 from pfmongo.commands.database import showAll as db
 from pfmongo.commands.collection import showAll as col
 from pfmongo.commands.fop.pwd import pwd_level
-
+import asyncio
 from types import SimpleNamespace
 import fontawesome as fa
 
@@ -61,18 +61,18 @@ def resp_process(resp: responseModel.mongodbResponse) -> str:
     return rstr
 
 
-def ls_db(options: Namespace) -> responseModel.mongodbResponse:
-    resp = db.showAll_asModel(
+async def ls_db(options: Namespace) -> responseModel.mongodbResponse:
+    resp = await db.showAll_asModel(
         driver.settmp(db.options_add(options), [{"beQuiet": True}])
     )
     return resp
 
 
-def ls_collection(options: Namespace) -> responseModel.mongodbResponse:
+async def ls_collection(options: Namespace) -> responseModel.mongodbResponse:
     resp = col.showAll_asModel(
         driver.settmp(col.options_add(options), [{"beQuiet": True}])
     )
-    return resp
+    return await resp
 
 
 def file_filter(
@@ -87,8 +87,8 @@ def file_filter(
     return resp
 
 
-def ls_doc(options: Namespace) -> responseModel.mongodbResponse:
-    resp = doc.showAll_asModel(
+async def ls_doc(options: Namespace) -> responseModel.mongodbResponse:
+    resp = await doc.showAll_asModel(
         driver.settmp(doc.options_add("_id", options), [{"beQuiet": True}])
     )
     if resp.message:
@@ -100,9 +100,10 @@ def ls_msgParse(lstr: str) -> str:
     return re.sub(r"ObjectId\('([\w]+)'\)", r"'\1'", lstr)
 
 
-def ls_fargsUpdate(options: Namespace) -> Namespace:
+async def ls_fargsUpdate(options: Namespace) -> Namespace:
     localoptions: Namespace = copy.deepcopy(options)
-    cwdSet: set[str] = set(smash.cwd(options).parts[-1:])
+    path: Path = await smash.cwd(options)
+    cwdSet: set[str] = set(path.parts[-1:])
     argSet: set[str] = set(options.argument.path.parts[-1:])
     try:
         localoptions.argument.path = (argSet - cwdSet).pop()
@@ -111,8 +112,8 @@ def ls_fargsUpdate(options: Namespace) -> Namespace:
     return localoptions
 
 
-def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]:
-    cwd: Path = smash.cwd(options)
+async def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]:
+    cwd: Path = await smash.cwd(options)
     resp: responseModel.mongodbResponse = responseModel.mongodbResponse()
     cdResp: fsModel.cdResponse = fsModel.cdResponse()
     # pudb.set_trace()
@@ -125,16 +126,16 @@ def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]:
         resp.message = cdResp.message + " " + cdResp.error
         return 1, resp
 
-    loptions = ls_fargsUpdate(options)
+    loptions = await ls_fargsUpdate(options)
     match pwd_level(loptions):
         case "root":
-            resp = ls_db(loptions)
+            resp = await ls_db(loptions)
         case "database":
-            resp = ls_collection(loptions)
+            resp = await ls_collection(loptions)
         case "collection":
-            resp = ls_doc(loptions)
+            resp = await ls_doc(loptions)
         case "_":
-            resp = ls_db(loptions)
+            resp = await ls_db(loptions)
     file_filter(resp, loptions)
     if not options.beQuiet:
         resp_process(resp)
@@ -145,14 +146,22 @@ def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]:
     return ret, resp
 
 
-def ls_asInt(options: Namespace) -> int:
-    ret, resp = ls_do(options)
+async def ls_asInt(options: Namespace) -> int:
+    ret, resp = await ls_do(options)
     return ret
 
 
-def ls_asModel(options: Namespace) -> responseModel.mongodbResponse:
-    ret, resp = ls_do(options)
+async def ls_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    ret, resp = await ls_do(options)
     return resp
+
+
+def sync_ls_asInt(options: Namespace) -> int:
+    return asyncio.run(ls_asInt(options))
+
+
+def sync_ls_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(ls_asModel(options))
 
 
 @click.command(
@@ -187,6 +196,6 @@ true for files uploaded using {YL}pfmongo{NC}.
 @click.pass_context
 def ls(ctx: click.Context, path: str, attribs: str, long: bool) -> int:
     # pudb.set_trace()
-    ret, resp = ls_do(options_add(path, attribs, long, ctx.obj["options"]))
+    ret, resp = asyncio.run(ls_do(options_add(path, attribs, long, ctx.obj["options"])))
     print(resp_process(resp))
     return ret
