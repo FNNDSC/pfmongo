@@ -51,5 +51,4 @@ server. It accepts no arguments.
 )
 @click.pass_context
 def showAll(ctx: click.Context) -> int:
-    # return showAll_asInt(options_add(ctx.obj["options"]))
     return sync_showAll_asInt(options_add(ctx.obj["options"]))

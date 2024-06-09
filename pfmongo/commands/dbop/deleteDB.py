@@ -1,55 +1,70 @@
-import  click
-from    argparse        import  Namespace
-from    pfmongo         import  env, driver
-from    pfmisc          import  Colors as C
+import click
+from argparse import Namespace
+from pfmongo import env, driver
+from pfmisc import Colors as C
 
-from    pfmongo.commands.dbop   import  connect as db
-from    pfmongo.models          import  responseModel
-import  pudb
-import  copy
+from pfmongo.commands.dbop import connect as db
+from pfmongo.models import responseModel
+import pudb
+import copy
+import asyncio
 
-NC  = C.NO_COLOUR
-GR  = C.GREEN
-CY  = C.CYAN
-PL  = C.PURPLE
-YL  = C.YELLOW
+NC = C.NO_COLOUR
+GR = C.GREEN
+CY = C.CYAN
+PL = C.PURPLE
+YL = C.YELLOW
 
-from pfmongo.models.dataModel import messageType
 
-def options_add(database:str, options:Namespace) -> Namespace:
-    localoptions:Namespace  = copy.deepcopy(options)
-    localoptions.do         = 'deleteDB'
-    localoptions.argument   = database
+def options_add(database: str, options: Namespace) -> Namespace:
+    localoptions: Namespace = copy.deepcopy(options)
+    localoptions.do = "deleteDB"
+    localoptions.argument = database
     return localoptions
 
-def DB_connectToTarget(options:Namespace) -> str:
-    currentDB:str  = env.DBname_get(options)
+
+def DB_connectToTarget(options: Namespace) -> str:
+    currentDB: str = env.DBname_get(options)
     if currentDB != options.argument:
-        options.do      = 'connectDB'
-        db.connectTo_asInt(options)
+        options.do = "connectDB"
+        db.sync_connectTo_asInt(options)
     return options.argument
+
 
 def DBdel_setupFail(options: Namespace) -> int:
     if env.env_failCheck(options):
         return 100
     DB_connectToTarget(options)
-    options.do          = 'deleteDB'
+    options.do = "deleteDB"
     return 0
 
-def DBdel_asInt(options:Namespace) -> int:
-    fail:int            = 0
-    if (fail := DBdel_setupFail(options)):
+
+async def DBdel_asInt(options: Namespace) -> int:
+    fail: int = 0
+    if fail := DBdel_setupFail(options):
         return fail
-    return driver.run_intReturn(options)
+    return await driver.run_intReturn(options)
 
-def DBdel_asModel(options:Namespace) -> responseModel.mongodbResponse:
-    model:responseModel.mongodbResponse = responseModel.mongodbResponse()
+
+async def DBdel_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    model: responseModel.mongodbResponse = responseModel.mongodbResponse()
     if DBdel_setupFail(options):
-        model.message   = 'env failure'
+        model.message = "env failure"
         return model
-    return driver.run_modelReturn(options)
+    return await driver.run_modelReturn(options)
 
-@click.command(cls = env.CustomCommand, help=f"""
+
+def sync_DBdel_asInt(options: Namespace) -> int:
+    return asyncio.run(DBdel_asInt(options))
+
+
+def sync_DBdel_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(DBdel_asModel(options))
+
+
+@click.command(
+    cls=env.CustomCommand,
+    help=f"""
 delete an entire {PL}DATABASE{NC}
 
 SYNOPSIS
@@ -59,10 +74,10 @@ DESC
 This subcommand removes an entire {YL}DATABASE{NC} immediately.
 Use with care! No confirmation is asked by the system!
 
-""")
-@click.argument('database',
-                required = True)
+""",
+)
+@click.argument("database", required=True)
 @click.pass_context
-def deleteDB(ctx:click.Context, database:str) -> int:
+def deleteDB(ctx: click.Context, database: str) -> int:
     # pudb.set_trace()
-    return DBdel_asInt(options_add(database, ctx.obj['options']))
+    return sync_DBdel_asInt(options_add(database, ctx.obj["options"]))
