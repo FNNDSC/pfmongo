@@ -7,6 +7,7 @@ from pfmongo.models import responseModel
 from typing import Required, cast
 import copy
 from pfmongo.commands.clop import connect
+import asyncio
 
 NC = C.NO_COLOUR
 GR = C.GREEN
@@ -21,17 +22,27 @@ def options_add(target: str, field: str, options: Namespace) -> Namespace:
     localoptions.argument = {
         "field": field,
         "searchFor": target.split(","),
-        "collection": connect.baseCollection_getAndConnect(options).collectionName,
+        "collection": asyncio.run(
+            connect.baseCollection_getAndConnect(options)
+        ).collectionName,
     }
     return localoptions
 
 
-def documentSearch_asInt(options: Namespace) -> int:
-    return driver.run_intReturn(options)
+async def documentSearch_asInt(options: Namespace) -> int:
+    return await driver.run_intReturn(options)
 
 
-def documentSearch_asModel(options: Namespace) -> responseModel.mongodbResponse:
-    return driver.run_modelReturn(options)
+async def documentSearch_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return await driver.run_modelReturn(options)
+
+
+def sync_documentSearch_asInt(options: Namespace) -> int:
+    return asyncio.run(documentSearch_asInt(options))
+
+
+def sync_documentSearch_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(documentSearch_asModel(options))
 
 
 @click.command(

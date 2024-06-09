@@ -1,44 +1,58 @@
-import  click
-import  pudb
-from    pfmongo         import  driver, env
-from    argparse        import  Namespace
-from    pfmongo.models  import  responseModel
-from    pfmisc          import  Colors as C
-import  copy
+import click
+import pudb
+from pfmongo import driver, env
+from argparse import Namespace
+from pfmongo.models import responseModel
+from pfmisc import Colors as C
+import copy
+import asyncio
 
-NC  = C.NO_COLOUR
-GR  = C.GREEN
-CY  = C.CYAN
-PL  = C.PURPLE
-YL  = C.YELLOW
+NC = C.NO_COLOUR
+GR = C.GREEN
+CY = C.CYAN
+PL = C.PURPLE
+YL = C.YELLOW
 
-from pfmongo.models.dataModel import messageType
 
-def options_add(id:str, options:Namespace) -> Namespace:
-    localoptions:Namespace  = copy.deepcopy(options)
-    localoptions.do         = 'getDocument'
-    localoptions.argument   = id
+def options_add(id: str, options: Namespace) -> Namespace:
+    localoptions: Namespace = copy.deepcopy(options)
+    localoptions.do = "getDocument"
+    localoptions.argument = id
     return localoptions
 
-def get_envFailCheck(options:Namespace) -> int:
+
+def get_envFailCheck(options: Namespace) -> int:
     if env.env_failCheck(options):
         return 100
     return 0
 
-def documentGet_asInt(options) -> int:
-    fail:int    = 0
-    if(fail := get_envFailCheck(options)):
+
+async def documentGet_asInt(options) -> int:
+    fail: int = 0
+    if fail := get_envFailCheck(options):
         return fail
-    return driver.run_intReturn(options)
+    return await driver.run_intReturn(options)
 
-def documentGet_asModel(options) -> responseModel.mongodbResponse:
-    model:responseModel.mongodbResponse = responseModel.mongodbResponse()
+
+async def documentGet_asModel(options) -> responseModel.mongodbResponse:
+    model: responseModel.mongodbResponse = responseModel.mongodbResponse()
     if get_envFailCheck(options):
-        model.message   = 'env failure'
+        model.message = "env failure"
         return model
-    return driver.run_modelReturn(options)
+    return await driver.run_modelReturn(options)
 
-@click.command(cls = env.CustomCommand, help=f"""
+
+def sync_documentGet_asInt(options: Namespace) -> int:
+    return asyncio.run(documentGet_asInt(options))
+
+
+def sync_documentGet_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(documentGet_asModel(options))
+
+
+@click.command(
+    cls=env.CustomCommand,
+    help=f"""
 read and print {PL}document{NC} from a collection
 
 SYNOPSIS
@@ -52,13 +66,10 @@ The "location" is defined by the core parameters, 'useDB' and 'useCollection'
 which are typically defined in the CLI, in the system environment, or in the
 session state.
 
-""")
-@click.option('--id',
-    type  = str,
-    help  = \
-    "the document 'id' to get",
-    default = '')
+""",
+)
+@click.option("--id", type=str, help="the document 'id' to get", default="")
 @click.pass_context
-def get(ctx:click.Context, id:str="") -> int:
+def get(ctx: click.Context, id: str = "") -> int:
     # pudb.set_trace()
-    return documentGet_asInt(options_add(id, ctx.obj['options']))
+    return sync_documentGet_asInt(options_add(id, ctx.obj["options"]))

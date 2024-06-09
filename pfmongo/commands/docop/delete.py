@@ -9,6 +9,7 @@ from pfmongo.commands.clop import connect
 from pfmongo.models import responseModel
 from typing import cast
 import copy
+import asyncio
 
 NC = C.NO_COLOUR
 GR = C.GREEN
@@ -43,33 +44,43 @@ def run_check(
     return retm
 
 
-def delete_do(options: Namespace) -> responseModel.mongodbResponse:
+async def delete_do(options: Namespace) -> responseModel.mongodbResponse:
     failEnv: int = 0
     if failEnv := env_check(options):
         return run_check(failEnv, "failure in document del setup")
     delResp: responseModel.mongodbResponse = responseModel.mongodbResponse()
     if not (
-        delResp := driver.run_modelReturn(connect.baseCollection_getAndConnect(options))
+        delResp := await driver.run_modelReturn(
+            await connect.baseCollection_getAndConnect(options)
+        )
     ).status:
         pass
         # return delResp
     print(delResp.message)
     if not settings.appsettings.donotFlatten:
-        delResp = driver.run_modelReturn(
-            connect.shadowCollection_getAndConnect(options)
+        delResp = await driver.run_modelReturn(
+            await connect.shadowCollection_getAndConnect(options)
         )
     return delResp
 
 
-def deleteDo_asInt(options: Namespace) -> int:
-    delResp: responseModel.mongodbResponse = delete_do(options)
+async def deleteDo_asInt(options: Namespace) -> int:
+    delResp: responseModel.mongodbResponse = await delete_do(options)
     docDelUse: responseModel.DocumentDeleteUsage = responseModel.DocumentDeleteUsage()
     docDelUse.status = delResp.status
     return env.response_exitCode(docDelUse)
 
 
-def deleteDo_asModel(options: Namespace) -> responseModel.mongodbResponse:
-    return delete_do(options)
+async def deleteDo_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return await delete_do(options)
+
+
+def sync_deleteDo_asInt(options: Namespace) -> int:
+    return asyncio.run(deleteDo_asInt(options))
+
+
+def sync_deleteDo_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(deleteDo_asModel(options))
 
 
 @click.command(
@@ -97,4 +108,4 @@ Use with care. No confirmation is asked!
 @click.pass_context
 def delete(ctx: click.Context, id: str = "") -> int:
     # pudb.set_trace()
-    return deleteDo_asInt(options_add(id, ctx.obj["options"]))
+    return sync_deleteDo_asInt(options_add(id, ctx.obj["options"]))

@@ -7,17 +7,17 @@ import json
 from pfmisc import Colors as C, switch
 from pfmongo.config import settings
 from pfmongo.models import responseModel
-from typing import Tuple, cast, Callable
+from typing import Tuple, cast, Callable, Coroutine, Awaitable
 from pfmongo.commands.clop import connect
+from pfmongo.models.dataModel import messageType
 import copy
+import asyncio
 
 NC = C.NO_COLOUR
 GR = C.GREEN
 CY = C.CYAN
 PL = C.PURPLE
 YL = C.YELLOW
-
-from pfmongo.models.dataModel import messageType
 
 
 def options_add(file: str, id: str, options: Namespace) -> Namespace:
@@ -70,35 +70,37 @@ def jsonFile_intoDictRead(filename: str) -> dict[bool, dict]:
     return d_json
 
 
-def prepCollection_forDocument(
+async def prepCollection_forDocument(
     options: Namespace,
-    connectCollection: Callable[[Namespace], Namespace],
+    connectCollection: Callable[[Namespace], Awaitable[Namespace]],
     document: dict,
-) -> Callable[..., int | responseModel.mongodbResponse]:
+    # ) -> Callable[..., int | responseModel.mongodbResponse]:
+) -> Callable[..., Coroutine[None, None, int | responseModel.mongodbResponse]]:
     document["_date"] = pfmongo.pfmongo.timenow()
     document["_owner"] = settings.mongosettings.MD_sessionUser
     document["_size"] = driver.get_size(document)
+    collection: Namespace = await connectCollection(options)
     return driver.event_setup(
         driver.settmp(
             options,
             [
-                {"collectionName": connectCollection(options).collectionName},
+                {"collectionName": collection.collectionName},
                 {"argument": document},
             ],
         )
     )
 
 
-def add_asType(
+async def add_asType(
     document: dict, options: Namespace, modelReturnType: str
 ) -> int | responseModel.mongodbResponse:
     # First save to the shadow collection:
     shadowResp: responseModel.mongodbResponse = responseModel.mongodbResponse()
     if not settings.appsettings.donotFlatten:
-        run = prepCollection_forDocument(
+        run = await prepCollection_forDocument(
             options, connect.shadowCollection_getAndConnect, flatten_dict(document)
         )
-        saveShadowFail: int | responseModel.mongodbResponse = run(
+        saveShadowFail: int | responseModel.mongodbResponse = await run(
             printResponse=False, returnType="model"
         )
         shadowResp = cast(responseModel.mongodbResponse, saveShadowFail)
@@ -111,10 +113,10 @@ def add_asType(
     if not options.argument["id"] and shadowResp.status:
         document["_id"] = shadowResp.response["connect"].documentName
     # Now save to the primary collection
-    run = prepCollection_forDocument(
+    run = await prepCollection_forDocument(
         options, connect.baseCollection_getAndConnect, document
     )
-    return run(printResponse=True, returnType=modelReturnType)
+    return await run(printResponse=True, returnType=modelReturnType)
 
 
 def setup(options: Namespace) -> Tuple[int, dict]:
@@ -149,22 +151,32 @@ def earlyFailure(
             return reti
 
 
-def documentAdd_asType(
+async def documentAdd_asType(
     options: Namespace, returnType: str = "int"
 ) -> int | responseModel.mongodbResponse:
     failOrOK: Tuple[int, dict] = (-1, {})
     if (failOrOK := setup(options))[0]:
         return earlyFailure(failOrOK, returnType)
     d_data: dict = failOrOK[1]
-    return add_asType(d_data, options, returnType)
+    return await add_asType(d_data, options, returnType)
 
 
-def documentAdd_asInt(options: Namespace) -> int:
-    return cast(int, documentAdd_asType(options, "int"))
+async def documentAdd_asInt(options: Namespace) -> int:
+    return cast(int, await documentAdd_asType(options, "int"))
 
 
-def documentAdd_asModel(options: Namespace) -> responseModel.mongodbResponse:
-    return cast(responseModel.mongodbResponse, documentAdd_asType(options, "model"))
+async def documentAdd_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return cast(
+        responseModel.mongodbResponse, await documentAdd_asType(options, "model")
+    )
+
+
+def sync_documentAdd_asInt(options: Namespace) -> int:
+    return asyncio.run(documentAdd_asInt(options))
+
+
+def sync_documentAdd_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(documentAdd_asModel(options))
 
 
 @click.command(
@@ -203,4 +215,4 @@ session state.
 @click.pass_context
 def add(ctx: click.Context, file: str, id: str = "") -> int:
     # pudb.set_trace()
-    return documentAdd_asInt(options_add(file, id, ctx.obj["options"]))
+    return sync_documentAdd_asInt(options_add(file, id, ctx.obj["options"]))
