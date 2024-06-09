@@ -5,6 +5,7 @@ aiohttp
 pudb
 ipython
 pytest
+pytest-asyncio
 
 # Database
 motor
