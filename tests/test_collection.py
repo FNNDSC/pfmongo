@@ -10,15 +10,15 @@ os.environ["XDG_CONFIG_HOME"] = "/tmp"
 
 
 def DB_connect(DB: str = "testDB") -> int:
-    return database.connectTo_asInt(
+    return database.sync_connectTo_asInt(
         database.options_add(DB, pfmongo.options_initialize())
     )
 
 
 def test_collection_connect_moduleAsInt() -> None:
-    """connect to a database "testDB" using a module call with an int return"""
+    """connect to a collection "testCollection" using a module call with an int return"""
     DB_connect()
-    ret: int = collection.connectTo_asInt(
+    ret: int = collection.sync_connectTo_asInt(
         collection.options_add("testCollection", pfmongo.options_initialize())
     )
     assert ret == 0
@@ -41,7 +41,7 @@ def test_collection_connect_moduleAsModel() -> None:
     """connect to a collection "testCollection" using a module call with model return"""
 
     DB_connect()
-    ret: responseModel.mongodbResponse = collection.connectTo_asModel(
+    ret: responseModel.mongodbResponse = collection.sync_connectTo_asModel(
         collection.options_add("testCollection", pfmongo.options_initialize())
     )
     assert "Successfully" in ret.message
@@ -64,14 +64,16 @@ def test_collection_showall_moduleAsInt() -> None:
     """show all collections using a module call with an int return"""
 
     DB_connect("admin")
-    ret: int = colShow.showAll_asInt(colShow.options_add(pfmongo.options_initialize()))
+    ret: int = colShow.sync_showAll_asInt(
+        colShow.options_add(pfmongo.options_initialize())
+    )
     assert ret == 0
 
 
 def test_collection_showAll_moduleAsModel() -> None:
     """show all collections using a module call with model return"""
     DB_connect("admin")
-    ret: responseModel.mongodbResponse = colShow.showAll_asModel(
+    ret: responseModel.mongodbResponse = colShow.sync_showAll_asModel(
         colShow.options_add(pfmongo.options_initialize())
     )
     assert "system" in ret.message
@@ -91,19 +93,19 @@ def test_collection_delete_main(capsys) -> None:
     assert "Successfully" in captured.out
 
 
-def test_collection_delete_moduleAsInt(capsys) -> None:
+def test_collection_delete_moduleAsInt() -> None:
     """delete databases using a module call with an int return"""
 
-    ret: int = deleteCol.collectiondel_asInt(
+    ret: int = deleteCol.sync_collectiondel_asInt(
         deleteCol.options_add("testCollection", pfmongo.options_initialize())
     )
     assert ret == 0
 
 
-def test_collection_delete_moduleAsModel(capsys) -> None:
+def test_collection_delete_moduleAsModel() -> None:
     """show all databases using a module call with model return"""
 
-    ret: responseModel.mongodbResponse = deleteCol.collectiondel_asModel(
+    ret: responseModel.mongodbResponse = deleteCol.sync_collectiondel_asModel(
         deleteCol.options_add("testCollection", pfmongo.options_initialize())
     )
 
