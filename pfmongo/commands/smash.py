@@ -22,6 +22,7 @@ import pfmongo.commands.fop.prompt as prompt
 from pfmongo.config import settings
 import subprocess
 from typing import Optional, Callable, Union
+import asyncio
 
 # from    ansi2html               import Ansi2HTMLConverter
 from pfmongo.commands.slib import tabc
@@ -98,12 +99,12 @@ def command_parse(command: str) -> str:
     return command
 
 
-def state_getModel(options: Namespace) -> responseModel.mongodbResponse:
-    return state.showAll_asModel(driver.settmp(options, [{"beQuiet": True}]))
+async def state_getModel(options: Namespace) -> responseModel.mongodbResponse:
+    return await state.showAll_asModel(driver.settmp(options, [{"beQuiet": True}]))
 
 
-def cwd(options: Namespace) -> Path:
-    model: responseModel.mongodbResponse = state_getModel(options)
+async def cwd(options: Namespace) -> Path:
+    model: responseModel.mongodbResponse = await state_getModel(options)
     if model.message == "/":
         return Path("/")
     else:
