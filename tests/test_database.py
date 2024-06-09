@@ -24,7 +24,7 @@ def test_database_connect_main(capsys) -> None:
 def test_database_connect_moduleAsInt() -> None:
     """connect to a database "testDB" using a module call with an int return"""
 
-    ret: int = connect.connectTo_asInt(
+    ret: int = connect.sync_connectTo_asInt(
         connect.options_add("testDB", pfmongo.options_initialize())
     )
     assert ret == 0
@@ -33,7 +33,7 @@ def test_database_connect_moduleAsInt() -> None:
 def test_database_connect_moduleAsModel() -> None:
     """connect to a database "testDB" using a module call with model return"""
 
-    ret: responseModel.mongodbResponse = connect.connectTo_asModel(
+    ret: responseModel.mongodbResponse = connect.sync_connectTo_asModel(
         connect.options_add("testDB", pfmongo.options_initialize())
     )
     assert "Successfully" in ret.message
@@ -84,16 +84,16 @@ def test_database_delete_main(capsys) -> None:
 def test_database_delete_moduleAsInt() -> None:
     """delete databases using a module call with an int return"""
 
-    ret: int = deleteDB.DBdel_asInt(
+    ret: int = deleteDB.sync_DBdel_asInt(
         deleteDB.options_add("testDB", pfmongo.options_initialize())
     )
     assert ret == 0
 
 
 def test_database_delete_moduleAsModel() -> None:
-    """show all databases using a module call with model return"""
+    """delete database using a module call with model return"""
 
-    ret: responseModel.mongodbResponse = deleteDB.DBdel_asModel(
+    ret: responseModel.mongodbResponse = deleteDB.sync_DBdel_asModel(
         deleteDB.options_add("testDB", pfmongo.options_initialize())
     )
 
