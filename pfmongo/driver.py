@@ -142,6 +142,7 @@ def event_setup(
             case "int":
                 return mongodb.exitCode
             case "model":
+                mongodb.responseData.exitCode = mongodb.exitCode
                 return mongodb.responseData
             case _:
                 return mongodb.exitCode
@@ -158,7 +159,7 @@ def event_setup(
 
         if not f_syncCallBack:
             # run it asynchronously..!
-            loop: AbstractEventLoop = asyncio.get_event_loop()
+            loop: AbstractEventLoop
 
             # If an event loop already exists, use it!
             try:
