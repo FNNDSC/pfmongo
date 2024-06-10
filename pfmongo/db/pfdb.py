@@ -418,7 +418,7 @@ class mongoCollection:
             try:
                 query = {"_id": ObjectId(id)}
             except Exception as e:
-                break
+                d_resp["error"] = f"Could not access {'_id'}: {e}"
         return d_resp
 
     async def document_list(self, field: str) -> dict:
