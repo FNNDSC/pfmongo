@@ -9,7 +9,7 @@ from pfmongo import pfmongo, __main__
 from pfmongo import driver, env
 from argparse import Namespace
 from pfmisc import Colors as C
-from pfmongo.models import responseModel
+from pfmongo.models import responseModel, fsModel
 from typing import cast
 from argparse import Namespace
 from pfmongo.commands.state import showAll as state
@@ -23,6 +23,7 @@ from pfmongo.config import settings
 import subprocess
 from typing import Optional, Callable, Union
 import asyncio
+from asyncio import get_event_loop
 
 # from    ansi2html               import Ansi2HTMLConverter
 from pfmongo.commands.slib import tabc
@@ -111,16 +112,23 @@ async def cwd(options: Namespace) -> Path:
         return Path("/" + model.message)
 
 
-def prompt_get(options: Namespace) -> str:
-    pathColor: str = prompt.prompt_do(prompt.options_add(options)).message
+async def prompt_get(options: Namespace) -> str:
+    promptDo: fsModel.cdResponse = await prompt.prompt_do(
+        await prompt.options_add(options)
+    )
+    pathColor: str = promptDo.message
     return f"{CY}({settings.mongosettings.MD_sessionUser}@smash){NC}{pathColor}$>"
 
 
-def command_get(options: Namespace, **kwargs) -> str:
-    userInput: str = tabc.userInput_get(options, **kwargs)
+async def command_get(options: Namespace, **kwargs) -> str:
+    userInput: str = await tabc.userInput_get(options, **kwargs)
     fscmd: str = f"{userInput}".strip()
     # pudb.set_trace()
     return fscmd
+
+
+def sync_command_get(options: Namespace, **kwargs) -> str:
+    return asyncio.run(command_get(options, **kwargs))
 
 
 def meta_parse(command: str) -> str:
@@ -187,5 +195,7 @@ interface that harkens back to the days of /bin/ash!
 def smash(ctx: click.Context, prompt) -> None:
     print(introbanner_generate())
     options: Namespace = ctx.obj["options"]
+    loop: asyncio.AbstractEventLoop = get_event_loop()
     while True:
-        print(smash_execute(command_parse(command_get(options)), pipe_handler))
+        command_str: str = loop.run_until_complete(command_get(options))
+        print(smash_execute(command_parse(command_str), pipe_handler))
