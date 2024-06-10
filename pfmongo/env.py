@@ -245,7 +245,7 @@ def documentAddUsage_message(var: responseModel.DocumentAddUsage) -> str:
 def documentGetUsage_message(var: responseModel.DocumentGetUsage) -> str:
     # pudb.set_trace()
     message: str = ""
-    name: str = var.document["_id"]
+    name: str = var.documentName
     db: str = var.collection.databaseName
     col: str = var.collection.name
     size: int = 0
