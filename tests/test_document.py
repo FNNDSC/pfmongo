@@ -68,6 +68,7 @@ async def test_document_add_asInt() -> None:
 
 @pytest.mark.asyncio
 async def test_duplicate_add_asInt() -> None:
+    # pudb.set_trace()
     await DB_delete()
     await DB_connect()
     await collection_connect()
@@ -168,4 +169,4 @@ async def test_deleteTestDB() -> None:
 if __name__ == "__main__":
     print("Test document operations")
     pudb.set_trace()
-    asyncio.run(test_document_get_asModel())
+    asyncio.run(test_duplicate_add_asInt())
