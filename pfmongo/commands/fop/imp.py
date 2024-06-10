@@ -11,6 +11,7 @@ from typing import Tuple, cast, Callable
 from pfmongo.commands.docop import add
 from pathlib import Path
 import copy
+import asyncio
 
 NC = C.NO_COLOUR
 GR = C.GREEN
@@ -32,8 +33,8 @@ def options_add(file: str, options: Namespace) -> Namespace:
     return localoptions
 
 
-def imp_do(options: Namespace) -> responseModel.mongodbResponse:
-    imp: responseModel.mongodbResponse = add.documentAdd_asModel(
+async def imp_do(options: Namespace) -> responseModel.mongodbResponse:
+    imp: responseModel.mongodbResponse = await add.documentAdd_asModel(
         add.options_add(
             options.argument["file"], filename_get(options.argument["file"]), options
         )
@@ -41,10 +42,14 @@ def imp_do(options: Namespace) -> responseModel.mongodbResponse:
     return imp
 
 
-def imp_asInt(options: Namespace) -> int:
-    imp: responseModel.mongodbResponse = imp_do(options)
+async def imp_asInt(options: Namespace) -> int:
+    imp: responseModel.mongodbResponse = await imp_do(options)
     print(imp.message)
     return 0
+
+
+def sync_imp_asInt(options: Namespace) -> int:
+    return asyncio.run(imp_asInt(options))
 
 
 @click.command(
@@ -67,4 +72,4 @@ use for the import.
 @click.pass_context
 def imp(ctx: click.Context, file: str) -> int:
     # pudb.set_trace()
-    return imp_asInt(options_add(file, ctx.obj["options"]))
+    return sync_imp_asInt(options_add(file, ctx.obj["options"]))
