@@ -18,6 +18,7 @@ from pfmongo.commands.fop.pwd import pwd_level
 import asyncio
 from types import SimpleNamespace
 import fontawesome as fa
+import shutil
 
 NC = C.NO_COLOUR
 GR = C.GREEN
@@ -166,6 +167,67 @@ def sync_ls_asModel(options: Namespace) -> responseModel.mongodbResponse:
     return asyncio.run(ls_asModel(options))
 
 
+def terminal_getWidth() -> int:
+    return shutil.get_terminal_size().columns
+
+
+def columns_format(items: list[str], terminal_width: int) -> list[str]:
+    """
+    Format the given items into columns that fit the terminal width.
+
+    Args:
+        items (list[str]): List of strings to format.
+        terminal_width (int): Width of the terminal in characters.
+
+    Returns:
+        list[str]: List of formatted strings, each representing a row.
+    """
+    max_item_width: int = max(len(item) for item in items)
+    column_width: int = max_item_width + 2  # Add 2 for spacing
+
+    num_columns: int = max(1, terminal_width // column_width)
+    num_rows: int = (len(items) + num_columns - 1) // num_columns
+
+    rows: list[str] = []
+    for row in range(num_rows):
+        row_items: list[str] = items[row::num_rows]
+        formatted_row: str = "".join(
+            item.ljust(column_width) for item in row_items
+        ).rstrip()
+        rows.append(formatted_row)
+
+    return rows
+
+
+def columns_print(items: list[str]) -> None:
+    """
+    Print the given items in columns that fit the terminal width.
+
+    Args:
+        items (list[str]): List of strings to print.
+    """
+    terminal_width: int = terminal_getWidth()
+    formatted_rows: list[str] = columns_format(items, terminal_width)
+
+    for row in formatted_rows:
+        print(row)
+
+
+def filenames_parse(data: str) -> list[str]:
+    """
+    Parse the data string into a list of filenames.
+
+    Args:
+        data (str): The input data string.
+
+    Returns:
+        list[str]: List of filenames, each consisting of a type letter, a space, and a string.
+    """
+    lines: list[str] = data.strip().split("\n")
+    filenames: list[str] = [line.strip() for line in lines if line.strip()]
+    return filenames
+
+
 @click.command(
     cls=env.CustomCommand,
     help=f"""
@@ -199,5 +261,7 @@ true for files uploaded using {YL}pfmongo{NC}.
 def ls(ctx: click.Context, path: str, attribs: str, long: bool) -> int:
     # pudb.set_trace()
     ret, resp = asyncio.run(ls_do(options_add(path, attribs, long, ctx.obj["options"])))
-    print(resp_process(resp))
+    lsd: str = resp_process(resp)
+    items: str = "\n".join(lsd.split("  "))
+    columns_print(filenames_parse(items))
     return ret
