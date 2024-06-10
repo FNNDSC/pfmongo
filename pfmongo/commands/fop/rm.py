@@ -7,7 +7,7 @@ from pfmongo.models import responseModel
 from pfmisc import Colors as C
 import copy
 from pathlib import Path
-from pfmongo.models import fsModel, responseModel
+from pfmongo.models import fsModel
 
 import pfmongo.commands.smash as smash
 import pfmongo.commands.fop.cd as cd
@@ -16,6 +16,7 @@ from pfmongo.commands.fop.pwd import dir_level
 from pfmongo.commands.document import delete as doc
 from pfmongo.commands.database import deleteDB as db
 from pfmongo.commands.collection import deleteCol as col
+import asyncio
 
 NC = C.NO_COLOUR
 GR = C.GREEN
@@ -32,8 +33,8 @@ def options_add(file: str, options: Namespace) -> Namespace:
     return localoptions
 
 
-def rm_db(options: Namespace) -> responseModel.mongodbResponse:
-    resp = db.DBdel_asModel(
+async def rm_db(options: Namespace) -> responseModel.mongodbResponse:
+    resp = await db.DBdel_asModel(
         driver.settmp(
             db.options_add(str(options.file), options),
             [
@@ -46,8 +47,8 @@ def rm_db(options: Namespace) -> responseModel.mongodbResponse:
     return resp
 
 
-def rm_collection(options: Namespace) -> responseModel.mongodbResponse:
-    resp = col.collectiondel_asModel(
+async def rm_collection(options: Namespace) -> responseModel.mongodbResponse:
+    resp = await col.collectiondel_asModel(
         driver.settmp(
             col.options_add(str(options.file), options),
             [{"beQuiet": True}, {"collectionName": str(options.file)}],
@@ -56,8 +57,8 @@ def rm_collection(options: Namespace) -> responseModel.mongodbResponse:
     return resp
 
 
-def rm_doc(options: Namespace) -> responseModel.mongodbResponse:
-    resp = doc.deleteDo_asModel(
+async def rm_doc(options: Namespace) -> responseModel.mongodbResponse:
+    resp = await doc.deleteDo_asModel(
         driver.settmp(
             doc.options_add(str(options.file.name), options), [{"beQuiet": True}]
         )
@@ -65,21 +66,21 @@ def rm_doc(options: Namespace) -> responseModel.mongodbResponse:
     return resp
 
 
-def rm_setName(options: Namespace) -> Namespace:
+async def rm_setName(options: Namespace) -> Namespace:
     cdResp: fsModel.cdResponse = fsModel.cdResponse()
-    cdResp = cd.toParent(options)
+    cdResp = await cd.toParent(options)
     if cdResp.status:
         options.file = options.file.name
     return options
 
 
-def rm_do(options: Namespace) -> responseModel.mongodbResponse:
-    cwd: Path = smash.cwd(options)
+async def rm_do(options: Namespace) -> responseModel.mongodbResponse:
+    cwd: Path = await smash.cwd(options)
     resp: responseModel.mongodbResponse = responseModel.mongodbResponse()
     cdResp: fsModel.cdResponse = fsModel.cdResponse()
     if not (
-        cdResp := cd.toParent(
-            cd.fullPath_resolve(cd.options_add(options.file, options))
+        cdResp := await cd.toParent(
+            await cd.fullPath_resolve(cd.options_add(options.file, options))
         )
     ).status:
         resp.message = cdResp.message
@@ -87,27 +88,35 @@ def rm_do(options: Namespace) -> responseModel.mongodbResponse:
     options.file = Path(options.file.name)
     match dir_level(cdResp):
         case "root":
-            resp = rm_db(options)
+            resp = await rm_db(options)
         case "database":
-            resp = rm_collection(options)
+            resp = await rm_collection(options)
         case "collection":
-            resp = rm_doc(options)
+            resp = await rm_doc(options)
         case "_":
             resp.message = "invalid directory level"
     print(resp.message)
-    cd.changeDirectory(cd.options_add(str(cwd), options))
+    await cd.changeDirectory(cd.options_add(str(cwd), options))
     return resp
 
 
-def rm_asInt(options: Namespace) -> int:
-    resp: responseModel.mongodbResponse = rm_do(options)
+async def rm_asInt(options: Namespace) -> int:
+    resp: responseModel.mongodbResponse = await rm_do(options)
     docDelUsage: responseModel.DocumentDeleteUsage = responseModel.DocumentDeleteUsage()
     docDelUsage.status = resp.status
     return env.response_exitCode(docDelUsage)
 
 
-def rm_asModel(options: Namespace) -> responseModel.mongodbResponse:
-    return rm_do(options)
+async def rm_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return await rm_do(options)
+
+
+def sync_rm_asInt(options: Namespace) -> int:
+    return asyncio.run(rm_asInt(options))
+
+
+def sync_rm_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(rm_asModel(options))
 
 
 @click.command(
@@ -129,4 +138,4 @@ to delete.
 @click.argument("path", required=False)
 def rm(ctx: click.Context, path: str) -> int:
     # pudb.set_trace()
-    return rm_asInt(options_add(path, ctx.obj["options"]))
+    return sync_rm_asInt(options_add(path, ctx.obj["options"]))
