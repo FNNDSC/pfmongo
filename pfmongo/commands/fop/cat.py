@@ -12,6 +12,7 @@ from pfmongo.models import fsModel, responseModel
 import pfmongo.commands.smash as smash
 import pfmongo.commands.fop.cd as cd
 import pfmongo.commands.docop.get as get
+import asyncio
 
 NC = C.NO_COLOUR
 GR = C.GREEN
@@ -28,22 +29,26 @@ def options_add(file: str, options: Namespace) -> Namespace:
     return localoptions
 
 
-def path_process(options: Namespace) -> fsModel.cdResponse:
+async def path_process(options: Namespace) -> fsModel.cdResponse:
     dir: Path = options.file.parent
-    return cd.changeDirectory(cd.options_add(str(dir), options))
+    return await cd.changeDirectory(cd.options_add(str(dir), options))
 
 
-def cat_do(options: Namespace) -> int:
-    cwd: Path = smash.cwd(options)
-    fileDir: fsModel.cdResponse = path_process(options)
+async def cat_do(options: Namespace) -> int:
+    cwd: Path = await smash.cwd(options)
+    fileDir: fsModel.cdResponse = await path_process(options)
     if not fileDir.status:
         print("directory {fileDir.path} does not seem to exist")
-    getResponse: responseModel.mongodbResponse = get.documentGet_asModel(
+    getResponse: responseModel.mongodbResponse = await get.documentGet_asModel(
         get.options_add(str(options.file.name), options)
     )
     print(getResponse.message)
-    cd.changeDirectory(cd.options_add(str(cwd), options))
+    await cd.changeDirectory(cd.options_add(str(cwd), options))
     return 0
+
+
+def sync_cat_do(options: Namespace) -> int:
+    return asyncio.run(cat_do(options))
 
 
 @click.command(
@@ -65,4 +70,4 @@ to use.
 @click.argument("path", required=False)
 def cat(ctx: click.Context, path: str) -> int:
     # pudb.set_trace()
-    return cat_do(options_add(path, ctx.obj["options"]))
+    return sync_cat_do(options_add(path, ctx.obj["options"]))
