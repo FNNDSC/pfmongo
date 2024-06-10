@@ -5,7 +5,7 @@ from argparse import Namespace
 from pfmongo.models import responseModel
 from pfmisc import Colors as C
 import copy
-
+import asyncio
 from pfmongo.commands.clop import connect
 
 NC = C.NO_COLOUR
@@ -15,24 +15,33 @@ PL = C.PURPLE
 YL = C.YELLOW
 
 
-def options_add(target: str, options: Namespace) -> Namespace:
+async def options_add(options: Namespace) -> Namespace:
     localoptions: Namespace = copy.deepcopy(options)
 
     localoptions.do = "searchDocument"
+    collectionName: Namespace = await connect.baseCollection_getAndConnect(options)
     localoptions.argument = {
         "field": "_id",
-        "searchFor": target.split(","),
-        "collection": connect.baseCollection_getAndConnect(options).collectionName,
+        "searchFor": options.pattern.split(","),
+        "collection": collectionName.collectionName,
     }
     return localoptions
 
 
-def sg_asInt(options: Namespace) -> int:
-    return driver.run_intReturn(options)
+async def sg_asInt(options: Namespace) -> int:
+    return await driver.run_intReturn(await options_add(options))
 
 
-def sg_asModel(options: Namespace) -> responseModel.mongodbResponse:
-    return driver.run_modelReturn(options)
+async def sg_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return await driver.run_modelReturn(await options_add(options))
+
+
+def sync_sg_asInt(options: Namespace) -> int:
+    return asyncio.run(sg_asInt(options))
+
+
+def sync_sg_asModel(options: Namespace) -> responseModel.mongodbResponse:
+    return asyncio.run(sg_asModel(options))
 
 
 @click.command(
@@ -53,4 +62,5 @@ primitive and simple search across documents, returning the names of documents
 @click.argument("pattern", required=True)
 def sg(ctx: click.Context, pattern: str) -> int:
     # pudb.set_trace()
-    return sg_asInt(options_add(pattern, ctx.obj["options"]))
+    ctx.obj["options"].pattern = pattern
+    return sync_sg_asInt(ctx.obj["options"])
