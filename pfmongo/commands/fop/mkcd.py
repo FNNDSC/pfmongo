@@ -38,4 +38,4 @@ In reality this is simply an alias to {CY}cd {YL}--create <path>{NC}
 def mkcd(ctx: click.Context, path: str) -> int:
     # pudb.set_trace()
     mkdir: bool = True
-    return cd.changeDirectory(cd.options_add(path, ctx.obj["options"], mkdir)).code
+    return cd.sync_changeDirectory(cd.options_add(path, ctx.obj["options"], mkdir)).code
