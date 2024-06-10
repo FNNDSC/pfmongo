@@ -109,7 +109,7 @@ async def add_asType(
                 case "model":
                     return saveShadowFail
                 case "int":
-                    return int(not shadowResp.status)
+                    return int(shadowResp.exitCode)
     if not options.argument["id"] and shadowResp.status:
         document["_id"] = shadowResp.response["connect"].documentName
     # Now save to the primary collection
