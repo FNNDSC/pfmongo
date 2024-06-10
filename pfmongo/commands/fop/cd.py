@@ -1,7 +1,6 @@
 from argparse import Namespace
 import click
 from pfmongo import driver, env
-from argparse import Namespace
 from pfmisc import Colors as C
 from pfmongo.models import responseModel, fsModel
 from pathlib import Path
@@ -16,6 +15,7 @@ from pfmongo.commands.collection import connect as colconnect
 import pfmongo.commands.smash as smash
 import copy
 from types import SimpleNamespace
+import asyncio
 
 NC = C.NO_COLOUR
 GR = C.GREEN
@@ -43,13 +43,13 @@ def path_to_dbCol(options: Namespace) -> tuple:
     return (db, collection)
 
 
-def toParent(options: Namespace) -> fsModel.cdResponse:
-    return changeDirectory(options_add(options.cd.path.parent, options))
+async def toParent(options: Namespace) -> fsModel.cdResponse:
+    return await changeDirectory(options_add(options.cd.path.parent, options))
 
 
-def toDir(options: Namespace) -> fsModel.cdResponse:
+async def toDir(options: Namespace) -> fsModel.cdResponse:
     (db, collection) = path_to_dbCol(options)
-    return changeDirectory(options_add(f"/{db}/{collection}", options))
+    return await changeDirectory(options_add(f"/{db}/{collection}", options))
 
 
 async def fullPath_resolve(options: Namespace) -> Namespace:
@@ -78,25 +78,25 @@ async def fullPath_resolve(options: Namespace) -> Namespace:
     if options.cd.path.is_absolute():
         return options
     if options.cd.path == Path("."):
-        options.cd.path = smash.cwd(options)
+        options.cd.path = await smash.cwd(options)
     elif options.cd.path == Path(".."):
         path: Path = await smash.cwd(options)
         options.cd.path = path.parent
-    elif smash.cwd(options) == Path("/") and not str(options.cd.path).startswith(".."):
+    elif await smash.cwd(options) == Path("/") and not str(options.cd.path).startswith(
+        ".."
+    ):
         options.cd.path = Path("/") / options.cd.path
     else:
         await navigate_cd()
     return options
 
 
-def db_isListed(db: str, options: Namespace) -> fsModel.cdResponse:
+async def db_isListed(db: str, options: Namespace) -> fsModel.cdResponse:
     fsPath: fsModel.cdResponse = fsModel.cdResponse()
-    if (
-        db
-        not in mdb.sync_showAll_asModel(
-            driver.settmp(options, [{"do": "showAllDB"}])
-        ).message
-    ):
+    allDB: responseModel.mongodbResponse = await mdb.showAll_asModel(
+        driver.settmp(options, [{"do": "showAllDB"}])
+    )
+    if db not in allDB.message:
         fsPath.error = f"database '{db}' not in mongo"
         fsPath.status = False
         fsPath.code = 2
@@ -106,10 +106,12 @@ def db_isListed(db: str, options: Namespace) -> fsModel.cdResponse:
     return fsPath
 
 
-def db_connect(db: str, options: Namespace) -> fsModel.cdResponse:
+async def db_connect(db: str, options: Namespace) -> fsModel.cdResponse:
     fsPath: fsModel.cdResponse = fsModel.cdResponse()
     fsPath.path = options.cd.path
-    if dbConnectFail := dbconnect.connectTo_asInt(dbconnect.options_add(db, options)):
+    if dbConnectFail := await dbconnect.connectTo_asInt(
+        dbconnect.options_add(db, options)
+    ):
         fsPath.error = f"could not connect to database '{db}'"
         fsPath.status = False
         fsPath.code = 3
@@ -117,14 +119,14 @@ def db_connect(db: str, options: Namespace) -> fsModel.cdResponse:
     return fsPath
 
 
-def col_isListed(db: str, collection: str, options: Namespace) -> fsModel.cdResponse:
+async def col_isListed(
+    db: str, collection: str, options: Namespace
+) -> fsModel.cdResponse:
     fsPath: fsModel.cdResponse = fsModel.cdResponse()
-    if (
-        collection
-        not in col.showAll_asModel(
-            driver.settmp(options, [{"do": "showAllCollections"}])
-        ).message
-    ):
+    allCollections: responseModel.mongodbResponse = await col.showAll_asModel(
+        driver.settmp(options, [{"do": "showAllCollections"}])
+    )
+    if collection not in allCollections.message:
         fsPath.error = f"collection '{collection}' not in database '{db}'"
         fsPath.status = False
         fsPath.code = 4
@@ -134,10 +136,12 @@ def col_isListed(db: str, collection: str, options: Namespace) -> fsModel.cdResp
     return fsPath
 
 
-def col_connect(db: str, collection: str, options: Namespace) -> fsModel.cdResponse:
+async def col_connect(
+    db: str, collection: str, options: Namespace
+) -> fsModel.cdResponse:
     fsPath: fsModel.cdResponse = fsModel.cdResponse()
     fsPath.path = options.cd.path
-    if colCollectFail := colconnect.connectTo_asInt(
+    if colCollectFail := await colconnect.connectTo_asInt(
         colconnect.options_add(collection, options)
     ):
         fsPath.error = (
@@ -166,7 +170,7 @@ def is_path_too_long(options) -> fsModel.cdResponse:
     return fsPath
 
 
-def path_connect(options: Namespace) -> fsModel.cdResponse:
+async def path_connect(options: Namespace) -> fsModel.cdResponse:
     fsPath: fsModel.cdResponse = fsModel.cdResponse()
     connect: fsModel.cdResponse = fsModel.cdResponse()
     connect.path = options.cd.path
@@ -175,17 +179,20 @@ def path_connect(options: Namespace) -> fsModel.cdResponse:
     if is_root(options):
         return connect
     (db, collection) = path_to_dbCol(options)
-    if db and not (fsPath := db_isListed(db, options)).status:
+    if db and not (fsPath := await db_isListed(db, options)).status:
         if not options.cd.create:
             return fsPath
     connect.state["database"] = fsPath.state["database"]
-    if db and not (fsPath := db_connect(db, options)).status:
+    if db and not (fsPath := await db_connect(db, options)).status:
         return fsPath
-    if collection and not (fsPath := col_isListed(db, collection, options)).status:
+    if (
+        collection
+        and not (fsPath := await col_isListed(db, collection, options)).status
+    ):
         if not options.cd.create:
             return fsPath
     connect.state["collection"] = fsPath.state["collection"]
-    if collection and not (fsPath := col_connect(db, collection, options)).status:
+    if collection and not (fsPath := await col_connect(db, collection, options)).status:
         return fsPath
     connect.status = True
     connect.message = f"successfully connected path to {connect.path}"
@@ -199,12 +206,16 @@ def path_lengthOK(options: Namespace) -> bool:
     return True if len(options.cd.path.parents.parts == 2) else False
 
 
-def changeDirectory(options: Namespace) -> fsModel.cdResponse:
-    options = fullPath_resolve(options)
+async def changeDirectory(options: Namespace) -> fsModel.cdResponse:
+    options = await fullPath_resolve(options)
     cdResponse: fsModel.cdResponse = fsModel.cdResponse()
-    if (cdResponse := path_connect(options)).code:
+    if (cdResponse := await path_connect(options)).code:
         print(cdResponse.error)
     return cdResponse
+
+
+def sync_changeDirectory(options: Namespace) -> fsModel.cdResponse:
+    return asyncio.run(changeDirectory(options))
 
 
 @click.command(
@@ -234,4 +245,4 @@ with {YL}--create{NC}.
 @click.pass_context
 def cd(ctx: click.Context, path: str, create: bool) -> int:
     # pudb.set_trace()
-    return changeDirectory(options_add(path, ctx.obj["options"], create)).code
+    return sync_changeDirectory(options_add(path, ctx.obj["options"], create)).code
