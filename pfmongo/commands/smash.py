@@ -24,6 +24,7 @@ import subprocess
 from typing import Optional, Callable, Union
 import asyncio
 from asyncio import get_event_loop
+from pydantic import BaseModel
 
 # from    ansi2html               import Ansi2HTMLConverter
 from pfmongo.commands.slib import tabc
@@ -66,7 +67,87 @@ def smash_output(command: str) -> str:
     return output
 
 
+class ClickResult(BaseModel):
+    exit_code: int
+    output: str
+    # Add other fields if needed
+
+
+async def invoke_click_async(app, args: list[str], **kwargs) -> ClickResult:
+    """
+    Asynchronously invoke a Click command.
+
+    :param app: The Click application.
+    :param args: List of command arguments.
+    :param kwargs: Additional keyword arguments for CliRunner.invoke.
+    :return: A ClickResult instance with the command's result.
+    """
+    loop = asyncio.get_running_loop()
+    runner = CliRunner()
+    result = await loop.run_in_executor(
+        None, lambda: runner.invoke(app, args, **kwargs)
+    )
+    return ClickResult(exit_code=result.exit_code, output=result.output)
+
+
+async def smash_output_async(command: str) -> str:
+    """
+    Asynchronous version of smash_output.
+
+    :param command: The command string to process.
+    :return: The output of the command.
+    """
+    output: str = meta_parse(command)
+    if not output:
+        result: ClickResult = await invoke_click_async(
+            __main__.app, command.split(), color=True
+        )
+        output = result.output
+    return output
+
+
+async def smash_execute_async(
+    command: str,
+    f: Optional[Callable[[str, list[str]], subprocess.CompletedProcess]] = None,
+) -> Union[bytes, str]:
+    """
+    Asynchronous version of smash_execute.
+
+    :param command: The command string to process.
+    :param f: Optional callable to handle piped commands.
+    :return: Result of the command execution.
+    """
+    cmdpart: list[str] = pipe_split(command)
+    smash_ret: str = await smash_output_async(cmdpart[0])
+    result: str = smash_ret
+
+    if len(cmdpart) > 1 and f:
+        # Handle potential blocking operation in a separate thread
+        loop = asyncio.get_running_loop()
+        process: subprocess.CompletedProcess = await loop.run_in_executor(
+            None, lambda: f(smash_ret, cmdpart)
+        )
+        result = f"exec: '{process.args}', returncode: {process.returncode}"
+        result = ""
+
+    return result
+
+
 def smash_execute(
+    command: str,
+    f: Optional[Callable[[str, list[str]], subprocess.CompletedProcess]] = None,
+) -> Union[bytes, str]:
+    cmdpart: list = pipe_split(command)
+    smash_ret: str = smash_output(cmdpart[0])
+    result: str = smash_ret
+    if len(cmdpart) > 1 and f:
+        process: subprocess.CompletedProcess = f(smash_ret, cmdpart)
+        result = f"exec: '{process.args}', returncode: {process.returncode}"
+        result = ""
+    return result
+
+
+async def smash_executeAsync(
     command: str,
     f: Optional[Callable[[str, list[str]], subprocess.CompletedProcess]] = None,
 ) -> Union[bytes, str]:
