@@ -54,10 +54,12 @@ def objectSymbol_resolve(resp: responseModel.mongodbResponse) -> str:
 
 def resp_process(resp: responseModel.mongodbResponse) -> str:
     rstr: str = ""
-    file: list = ast.literal_eval(resp.message)
-    # pudb.set_trace()
-    for f in file:
-        rstr += objectSymbol_resolve(resp) + f + "  "
+    try:
+        file: list = ast.literal_eval(resp.message)
+        for f in file:
+            rstr += objectSymbol_resolve(resp) + f + "  "
+    except Exception as e:
+        pass
     return rstr
 
 
@@ -119,15 +121,15 @@ async def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]
     # pudb.set_trace()
     # cd.changeDirectory(cd.options_add(options.argument.path, options))
     if not (
-        cdResp := cd.toDir(
-            cd.fullPath_resolve(cd.options_add(options.argument.path, options))
+        cdResp := await cd.toDir(
+            await cd.fullPath_resolve(cd.options_add(options.argument.path, options))
         )
     ).status:
         resp.message = cdResp.message + " " + cdResp.error
         return 1, resp
 
     loptions = await ls_fargsUpdate(options)
-    match pwd_level(loptions):
+    match await pwd_level(loptions):
         case "root":
             resp = await ls_db(loptions)
         case "database":
@@ -142,7 +144,7 @@ async def ls_do(options: Namespace) -> tuple[int, responseModel.mongodbResponse]
     ret: int = 0
     if not resp.message:
         ret = 1
-    cd.changeDirectory(cd.options_add(str(cwd), options))
+    await cd.changeDirectory(cd.options_add(str(cwd), options))
     return ret, resp
 
 
