@@ -234,18 +234,31 @@ def filenames_parse(data: str) -> list[str]:
 list {YL}path{NC}
 
 SYNOPSIS
-{CY}ls {YL}[--long] [--human] [<path>]{NC}
+{CY}ls {YL}[--attribs {GR}<attriblist>{YL}] [--raw] [--human] [--long] [<path>]{NC}
 
 ARGS
+{YL}--long{NC}
+This flag triggers a detailed listing, showing analogues to the document
+or "file" {CY}owner{NC}, {CY}size{NC}, and creation {CY}date{NC}.
+
+This assumes that the document entry has these fields encoded, which 
+is only true for files uploaded using {YL}pfmongo{NC}.
+
+{YL}--raw{NC}
+If specified, show the raw response.
+
+{YL}--human{NC}
+If specified with {YL}--long{NC} show any sizes in human friendly terms.
+
+{YL}--attribs {GR}<attriblist>{NC}
+If specified with {YL}--long{NC} show the passed attributes, specified as 
+a comma separated list.
+
+DESCRIPTION
 This command lists the objects (files and directories) that are at a given
 path. This path can be a directory, in which case possibly multiple objects
 are listed, or it can be a single file in which case information about that
 single file is listed.
-
-The {YL}--long{NC} flag triggers a detailed listing, showing analogues to
-the document or "file" {CY}owner{NC}, {CY}size{NC}, and creation {CY}date{NC}.
-This assumes that the document entry has these fields encoded, which is only
-true for files uploaded using {YL}pfmongo{NC}.
 
 
 """,
@@ -256,11 +269,26 @@ true for files uploaded using {YL}pfmongo{NC}.
     required=False,
     help="A comma separated list of file attributes to return/print",
 )
+@click.option(
+    "--raw",
+    is_flag=True,
+    help="print the actual returned response without cleanup",
+)
+@click.option(
+    "--human",
+    is_flag=True,
+    help="print file sizes in human friendly format",
+)
 @click.option("--long", is_flag=True, help="If set, use a long listing format")
 @click.pass_context
-def ls(ctx: click.Context, path: str, attribs: str, long: bool) -> int:
+def ls(
+    ctx: click.Context, path: str, attribs: str, long: bool, raw: bool, human: bool
+) -> int:
     # pudb.set_trace()
     ret, resp = asyncio.run(ls_do(options_add(path, attribs, long, ctx.obj["options"])))
+    if raw:
+        print(resp.message)
+        return ret
     lsd: str = resp_process(resp)
     items: str = "\n".join(lsd.split("  "))
     columns_print(filenames_parse(items))
