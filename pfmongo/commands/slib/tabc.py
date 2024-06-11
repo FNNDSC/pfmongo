@@ -34,13 +34,18 @@ async def fileList_get(options: Namespace) -> list[str]:
 
 async def userInput_get(options: Namespace, **kwargs) -> str:
     noninteractive: str = ""
+    files: list[str] = []
+    # pudb.set_trace()
     for k, v in kwargs.items():
         if k == "noninteractive":
             noninteractive = v
+        if k == "files":
+            files = ast.literal_eval(v)
     if noninteractive:
         return noninteractive
     userInput: str = ""
-    files: list[str] = await fileList_get(options)
+    if not len(files):
+        files = await fileList_get(options)
     sallcmds: set[str] = set(smash.fscommand)
     snofcmds: set[str] = set(smash.fscommand_noArgs)
     fcmds: list[str] = list(sallcmds.symmetric_difference(snofcmds))
