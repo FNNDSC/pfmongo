@@ -3,11 +3,18 @@ import sys
 import socket
 from argparse import Namespace, ArgumentParser, RawTextHelpFormatter
 from pfmongo import __main__
+import pfmongo
 from pfmongo.pfmongo import options_initialize
 from pfmongo.commands import smash
 import pudb
 from typing import Any
+import asyncio
+from pfmisc import Colors as C
+from copy import deepcopy
 
+LG = C.LIGHT_GREEN
+YL = C.YELLOW
+NC = C.NO_COLOUR
 
 TERMINATION_SEQUENCE = b"\r\n\r\n"
 
@@ -52,6 +59,12 @@ def parser_setup(str_desc: str = "") -> ArgumentParser:
         "--msg", type=str, default="", help="message to transmit in client mode"
     )
 
+    parser.add_argument(
+        "--repl",
+        default=False,
+        action="store_true",
+        help="If specified, run the client in REPL mode",
+    )
     return parser
 
 
@@ -141,12 +154,15 @@ class IPCserver:
         self.clientAddress: tuple[str, str]
         print(f"smashes server setup and listening on '{host}:{port}'")
 
-    def response_process(self, incoming: str) -> str:
+    async def response_process(self, incoming: str) -> str:
         response: str | bytes
         ret: str = ""
         mdbOptions: Namespace = options_initialize()
-        response = smash.smash_execute(
-            smash.command_parse(smash.command_get(mdbOptions, noninteractive=incoming))
+        response = await smash.smash_execute_async(
+            smash.command_parse(
+                await smash.command_get(mdbOptions, noninteractive=incoming)
+            ),
+            smash.pipe_handler,
         )
         if isinstance(response, str):
             ret = response
@@ -166,7 +182,8 @@ class IPCserver:
             if data:
                 incoming = data.decode()
                 print(f"Received: {incoming}")
-                self.connection.sendall(self.response_process(incoming).encode())
+                resp = asyncio.run(self.response_process(incoming))
+                self.connection.sendall(resp.encode())
         finally:
             self.connection.close()
 
@@ -182,6 +199,12 @@ def server_handle(options: Namespace) -> None:
     server.start()
 
 
+def options_msg(options: Namespace, msg: str) -> Namespace:
+    localOptions: Namespace = deepcopy(options)
+    localOptions.msg = msg
+    return localOptions
+
+
 def client_handle(options: Namespace) -> dict[str, str]:
     client: IPCclient = IPCclient(options.host, options.port)
     return client.message_sendAndReceive(options.msg)
@@ -191,12 +214,34 @@ def response_toConsole(resp: dict[str, str]) -> str:
     return resp["response"]
 
 
+def prompt_prefix(options: Namespace) -> str:
+    return f"{YL}[{options.host}:{options.port}]{NC}"
+
+
+async def client_repl(options: Namespace) -> None:
+    pfOptions: Namespace = options_initialize()
+    while True:
+        remoteLS: dict[str, str] = client_handle(options_msg(options, "ls --raw"))
+        print(f"{prompt_prefix(options)}")
+        command: str = await smash.command_get(pfOptions, files=remoteLS["response"])
+        if "exit" in command.lower():
+            break
+        dresp: dict[str, str] = client_handle(options_msg(options, command))
+        resp: str = response_toConsole(dresp)
+        if "No response received" not in resp:
+            print(resp)
+
+
 def main(*args: list[Any]) -> str | dict[str, str]:
     options: Namespace = parser_interpret(parser_setup(), args)
 
     dresp: dict[str, str]
     if options.server:
         server_handle(options)
+
+    if options.repl:
+        asyncio.run(client_repl(options))
+        return "0"
 
     dresp = client_handle(options)
     if "string" in options.response:
