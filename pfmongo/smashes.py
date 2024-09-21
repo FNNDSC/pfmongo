@@ -9,8 +9,14 @@ from pfmongo.commands import smash
 import pudb
 from typing import Any
 import asyncio
+import aiohttp
 from pfmisc import Colors as C
 from copy import deepcopy
+from pathlib import Path
+from pydantic import BaseModel
+import asyncio
+from urllib.parse import quote
+import re
 
 LG = C.LIGHT_GREEN
 YL = C.YELLOW
@@ -53,6 +59,13 @@ def parser_setup(str_desc: str = "") -> ArgumentParser:
         type=str,
         default="string",
         help="response type: either a 'string' or 'dict'",
+    )
+
+    parser.add_argument(
+        "--url",
+        type=str,
+        default="http://localhost:8025/api/v1/",
+        help="address of a pfmdb server",
     )
 
     parser.add_argument(
@@ -114,6 +127,117 @@ def parser_JSONinterpret(d_JSONargs) -> list:
     return l_args
 
 
+def nixToWin_path(cmd: str) -> str:
+    """
+    Any cmd from the client that contains a windows style '\\'
+    has this replaced with '/'
+    """
+    return re.sub(r"/(?!/)", r"\\", cmd)
+
+
+def path_to_dbCol(path: Path) -> tuple:
+    db: str = ""
+    collection: str = ""
+    match len(path.parts):
+        case _ if len(path.parts) == 2:
+            (root, db) = path.parts
+        case _ if len(path.parts) > 2:
+            (root, db, collection) = path.parts[:3]
+    return (db, collection)
+
+
+class FastAPIparams(BaseModel):
+    database: str
+    collection: str
+    handler: str = "smash"
+
+
+class FastAPIheader(BaseModel):
+    headers: str = "accept: application/json"
+
+
+class FastAPIpayload(BaseModel):
+    url: str
+    params: FastAPIparams
+    headers: FastAPIheader
+    data: str = ""
+
+    def msg_parse(self, msg: str) -> tuple[str, str, str]:
+        args: list[str] = msg.split()
+        path_index: int
+        database: str = ""
+        collection: str = ""
+
+        if msg.startswith("cd"):
+            msg = nixToWin_path(msg)
+            return quote(msg), database, collection
+
+        # Find the index of the last argument that starts with '/'
+        for i in range(len(args) - 1, -1, -1):
+            if args[i].startswith("/"):
+                path_index = i
+                break
+        else:
+            # No path found, return the original command
+            return quote(msg), database, collection
+        last_arg = args.pop(path_index)
+        (database, collection) = path_to_dbCol(Path(last_arg))
+        path_prefix, file_name = last_arg.rsplit("/", 1)
+        args.append(file_name)
+        msg = " ".join(args)
+        return quote(msg), database, collection
+
+    def __init__(self, url: str, msg: str, **data):
+        cmd: str
+        database: str
+        collection: str
+        cmdurl: str
+        cmd, database, collection = self.msg_parse(msg)
+        cmdurl = f"{url}/{cmd}"
+        super().__init__(
+            url=cmdurl,
+            params=FastAPIparams(database=database, collection=collection),
+            headers=FastAPIheader(),
+        )
+
+
+class FastAPIresponse(BaseModel):
+    status: int
+    response: Any
+
+
+class FastAPIclient:
+    def __init__(self, url: str):
+        self.url = f"{url}pfmongo/cli"
+
+    async def message_sendAndReceive(self, msg: str) -> FastAPIresponse:
+        pudb.set_trace()
+        fastAPIpayload: FastAPIpayload = FastAPIpayload(self.url, msg)
+        status: int
+        payload: Any
+
+        session: aiohttp.ClientSession = aiohttp.ClientSession()
+        try:
+            async with session.post(
+                fastAPIpayload.url,
+                params=fastAPIpayload.params.model_dump(),
+                headers=fastAPIpayload.headers.model_dump(),
+                data=fastAPIpayload.data,
+            ) as response:
+                status = response.status
+                if response.headers.get("Content-Type", "").startswith(
+                    "application/json"
+                ):
+                    payload = await response.json()
+                else:
+                    payload = await response.text()
+
+        finally:
+            await session.close()
+
+        return FastAPIresponse(status=status, response=payload)
+
+
 class IPCclient:
     def __init__(self, host: str, port: str):
         self.clientSocket: socket.socket = socket.socket(
@@ -121,7 +245,7 @@ class IPCclient:
         )
         self.clientSocket.connect((host, int(port)))
 
-    def message_sendAndReceive(self, msg: str) -> dict[str, str]:
+    async def message_sendAndReceive(self, msg: str) -> dict[str, str]:
         resp: dict[str, str] = {"response": ""}
         result: str = ""
         try:
@@ -205,9 +329,14 @@ def options_msg(options: Namespace, msg: str) -> Namespace:
     return localOptions
 
 
-def client_handle(options: Namespace) -> dict[str, str]:
-    client: IPCclient = IPCclient(options.host, options.port)
-    return client.message_sendAndReceive(options.msg)
+async def client_handle(options: Namespace) -> dict[str, str]:
+    client: IPCclient | FastAPIclient
+    if options.url:
+        client = FastAPIclient(options.url)
+    else:
+        client = IPCclient(options.host, options.port)
+    pudb.set_trace()
+    return await client.message_sendAndReceive(options.msg)
 
 
 def response_toConsole(resp: dict[str, str]) -> str:
@@ -215,18 +344,22 @@ def response_toConsole(resp: dict[str, str]) -> str:
 
 
 def prompt_prefix(options: Namespace) -> str:
-    return f"{YL}[{options.host}:{options.port}]{NC}"
+    if options.host:
+        return f"{YL}[{options.host}:{options.port}]{NC}"
+    else:
+        return f"{YL}[options:url]{NC}"
 
 
 async def client_repl(options: Namespace) -> None:
     pfOptions: Namespace = options_initialize()
+    pudb.set_trace()
     while True:
-        remoteLS: dict[str, str] = client_handle(options_msg(options, "ls --raw"))
+        remoteLS: dict[str, str] = await client_handle(options_msg(options, "ls --raw"))
         print(f"{prompt_prefix(options)}")
         command: str = await smash.command_get(pfOptions, files=remoteLS["response"])
         if "exit" in command.lower():
             break
-        dresp: dict[str, str] = client_handle(options_msg(options, command))
+        dresp: dict[str, str] = await client_handle(options_msg(options, command))
         resp: str = response_toConsole(dresp)
         if "No response received" not in resp:
             print(resp)
@@ -243,7 +376,7 @@ def main(*args: list[Any]) -> str | dict[str, str]:
         asyncio.run(client_repl(options))
         return "0"
 
-    dresp = client_handle(options)
+    dresp = asyncio.run(client_handle(options))
     if "string" in options.response:
         return response_toConsole(dresp)
     return dresp
