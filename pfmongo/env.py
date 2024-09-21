@@ -129,7 +129,7 @@ def complain(message: str, code: int, level: messageType = messageType.INFO) -> 
             print(tabulate_message(message, f"{CL}{level.name}{NC}"))
     else:
         print(f'{{"level": "{level.name}"}}')
-        pudb.set_trace()
+        # pudb.set_trace()
         if message:
             print(f'{{"message": "{to_singleLine(message)}"}}')
     return code
