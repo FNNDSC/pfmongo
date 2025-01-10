@@ -20,18 +20,18 @@ PL = C.PURPLE
 YL = C.YELLOW
 
 
-def options_add(file: str, id: str, options: Namespace) -> Namespace:
+def options_add(input: str, id: str, options: Namespace) -> Namespace:
     """
     Add options for a document addition operation.
 
-    :param file: Input text (file path or JSON string) to be added.
+    :param input: Input text (file path or JSON string) to be added.
     :param id: Unique identifier for the document.
     :param options: Namespace object with the current options.
     :return: Updated options Namespace.
     """
     localoptions: Namespace = copy.deepcopy(options)
     localoptions.do = "addDocument"
-    localoptions.argument = {"file": file, "id": id}
+    localoptions.argument = {"file": input, "id": id}
     return localoptions
 
 
