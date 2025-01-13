@@ -184,7 +184,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--noHashing",
         help="do not add hashes to inserted documents",
         dest="noHashing",
-        default=False,
+        default=settings.appsettings.noHashing,
         action="store_true",
     )
 
@@ -192,7 +192,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--allowDuplicates",
         help="allow duplicate (hashed) documents",
         dest="allowDuplicates",
-        default=False,
+        default=settings.appsettings.allowDuplicates,
         action="store_true",
     )
 
@@ -200,7 +200,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--donotFlatten",
         help="do not add shadow 'flattened' collection",
         dest="donotFlatten",
-        default=False,
+        default=settings.appsettings.donotFlatten,
         action="store_true",
     )
 
@@ -208,7 +208,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--noResponseTruncSize",
         help="do not truncate responses, even if nested and high data",
         dest="noResponseTruncSize",
-        default=False,
+        default=settings.appsettings.noResponseTruncSize,
         action="store_true",
     )
 
@@ -216,7 +216,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--noComplain",
         help="suppress complaint details",
         dest="noComplain",
-        default=False,
+        default=settings.appsettings.noComplain,
         action="store_true",
     )
 
@@ -224,7 +224,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--beQuiet",
         help="suppress all console output",
         dest="beQuiet",
-        default=False,
+        default=settings.appsettings.beQuiet,
         action="store_true",
     )
 
@@ -232,7 +232,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--detailedOutput",
         help="provide more detailed result payloads",
         dest="detailedOutput",
-        default=False,
+        default=settings.appsettings.detailedOutput,
         action="store_true",
     )
 
@@ -240,7 +240,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--eventLoopDebug",
         help="activate a hidden event loop breakpoint",
         dest="eventLoopDebug",
-        default=False,
+        default=settings.appsettings.eventLoopDebug,
         action="store_true",
     )
 
@@ -248,7 +248,7 @@ def parser_setup(desc: str, add_help: bool = True) -> ArgumentParser:
         "--modelSizesPrint",
         help="on final response, also print internal model size information",
         dest="modelSizesPrint",
-        default=False,
+        default=settings.appsettings.modelSizesPrint,
         action="store_true",
     )
 
