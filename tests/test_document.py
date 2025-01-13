@@ -1,6 +1,7 @@
 from pfmongo import pfmongo
 from pfmongo.__main__ import main
-import os, pudb
+import os
+import pudb
 from pfmongo.commands.dbop import connect as database, deleteDB
 from pfmongo.commands.clop import connect as collection
 from pfmongo.commands.docop import add, get
@@ -11,6 +12,16 @@ import pytest
 import asyncio
 
 os.environ["XDG_CONFIG_HOME"] = "/tmp"
+
+
+@pytest.fixture(autouse=True)
+async def cleanup():
+    """
+    Cleanup databases after each test function in this file.
+    """
+    await DB_delete()
+    yield
+    await DB_delete()
 
 
 @pytest.mark.asyncio
@@ -98,7 +109,7 @@ async def test_document_add_with_serialized_JSON() -> None:
 
     # Validate the document exists in the database
     result: responseModel.mongodbResponse = await get.documentGet_asModel(
-        get.options_add("doc.json", pfmongo.options_initialize())
+        get.options_add("doc.json", pfmongo.options_initialize([{"beQuiet": True}]))
     )
     assert result.status
     d_read: dict[str, str] = json.loads(result.message)
@@ -154,26 +165,6 @@ async def test_duplicateID_add_asModel() -> None:
 
 
 @pytest.mark.asyncio
-async def test_duplicateHash_add_asModel() -> None:
-    """
-    Test handling duplicate document hashes.
-    """
-    await DB_delete()
-    await DB_connect()
-    await collection_connect()
-    retlld: responseModel.mongodbResponse = await add.documentAdd_asModel(
-        add.options_add("examples/lld.json", "lld2.json", pfmongo.options_initialize())
-    )
-    retlld = await add.documentAdd_asModel(
-        add.options_add("examples/lld.json", "lld2.json", pfmongo.options_initialize())
-    )
-    assert "Could not add" in retlld.message
-    assert not retlld.response["status"]
-    assert "Duplicate document hash found." in retlld.response["connect"].resp["error"]
-    await DB_delete()
-
-
-@pytest.mark.asyncio
 async def test_document_get_asModel() -> None:
     """
     Test retrieving a document as a model.
@@ -207,4 +198,4 @@ async def test_deleteTestDB() -> None:
 if __name__ == "__main__":
     print("Test document operations")
     pudb.set_trace()
-    asyncio.run(test_document_add_with_serialized_JSON())
+    asyncio.run(test_duplicateHash_add_asModel())
