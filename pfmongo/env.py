@@ -125,7 +125,7 @@ def complain(message: str, code: int, level: messageType = messageType.INFO) -> 
     if settings.appsettings.noComplain:
         return code
     if settings.appsettings.logging == dataModel.loggingType.CONSOLE:
-        if message:
+        if message and not settings.appsettings.beQuiet:
             print(tabulate_message(message, f"{CL}{level.name}{NC}"))
     else:
         print(f'{{"level": "{level.name}"}}')
@@ -497,7 +497,7 @@ def addDocument_failureCheck(
             f"""
                 A document add usage error has occured, reported as:
 
-                {LR}{sprint_multi(usage.resp['error'], 65)}{NC}
+                {LR}{sprint_multi(usage.resp["error"], 65)}{NC}
 
                 This typically means that a duplicate 'id' has been specified.
                 Please check the value of any
@@ -506,7 +506,7 @@ def addDocument_failureCheck(
 
                  in the {GR}add{NC} subcommand.
 
-                 {CY}{usage.resp['database']}{NC}/{GR}{usage.resp['collection']}{NC}/{LR}{usage.documentName}{NC}
+                 {CY}{usage.resp["database"]}{NC}/{GR}{usage.resp["collection"]}{NC}/{LR}{usage.documentName}{NC}
 
                  If this is a "hash" duplication, it means the document content being uploaded  
                  _already_ exists in the database, even if a different 'id' is being specified.
