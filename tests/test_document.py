@@ -198,4 +198,4 @@ async def test_deleteTestDB() -> None:
 if __name__ == "__main__":
     print("Test document operations")
     pudb.set_trace()
-    asyncio.run(test_duplicateHash_add_asModel())
+    asyncio.run(test_document_get_asModel())
