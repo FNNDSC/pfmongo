@@ -35,7 +35,7 @@ class App(BaseSettings):
     fontawesomeUse: bool = True
 
     class Config:
-        env_prefix = ""  # Matches environment variables directly
+        env_prefix = "MD_"  # Matches environment variables that start with MD_
         case_sensitive = False  # Optional: Allows case-insensitive matching
 
 
