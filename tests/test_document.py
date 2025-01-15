@@ -5,6 +5,7 @@ import pudb
 from pfmongo.commands.dbop import connect as database, deleteDB
 from pfmongo.commands.clop import connect as collection
 from pfmongo.commands.docop import add, get
+from pfmongo.commands.document import delete as doc
 from pfmongo.models import responseModel
 from pfmongo.config import settings
 import json
@@ -185,6 +186,26 @@ async def test_document_get_asModel() -> None:
 
 
 @pytest.mark.asyncio
+async def test_document_del_asModel() -> None:
+    """
+    Test deleting document as a model.
+    """
+    await DB_delete()
+    await DB_connect()
+    await collection_connect()
+    load: int = await add.documentAdd_asInt(
+        add.options_add("examples/lld.json", "lld.json", pfmongo.options_initialize())
+    )
+    assert load == 0
+    delete: responseModel.mongodbResponse = await doc.deleteDo_asModel(
+        doc.options_add("lld.json", pfmongo.options_initialize())
+    )
+    assert "Successfully deleted" in delete.message
+    assert delete.response["connect"].documentName == "lld.json"
+    await DB_delete()
+
+
+@pytest.mark.asyncio
 async def test_deleteTestDB() -> None:
     """
     Test deleting the test MongoDB database.
@@ -198,4 +219,4 @@ async def test_deleteTestDB() -> None:
 if __name__ == "__main__":
     print("Test document operations")
     pudb.set_trace()
-    asyncio.run(test_document_get_asModel())
+    asyncio.run(test_document_del_asModel())
