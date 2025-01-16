@@ -40,7 +40,7 @@ def readme():
 
 setup(
     name="pfmongo",
-    version=get_version("pfmongo/__main__.py"),
+    version=get_version("pfmongo/__init__.py"),
     description='A mongodb (portable) "pf" client',
     long_description=readme(),
     author="FNNDSC",
