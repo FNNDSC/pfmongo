@@ -1,5 +1,15 @@
-from importlib.metadata import Distribution
-# from . import pfdb, persair
+from importlib.metadata import Distribution, PackageNotFoundError
 
-__pkg: Distribution         = Distribution.from_name(__package__)
-__version__: str            = __pkg.version
+__version__ = "0.9.900"
+
+__pkg: Distribution
+__version__: str
+__pkg_name__: str
+
+try:
+    __pkg = Distribution.from_name(__package__)
+    __version__ = __pkg.version
+    __pkg_name__ = __pkg.metadata["Name"]
+except PackageNotFoundError:
+    __pkg = None
+    __pkg_name__ = "pfmongo"
