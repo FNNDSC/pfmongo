@@ -2,8 +2,8 @@ from re import A
 import sys
 import socket
 from argparse import Namespace, ArgumentParser, RawTextHelpFormatter
-from pfmongo import __main__
-import pfmongo
+from pfmongo import pfmongo
+from pfmongo.app_core import app
 from pfmongo.pfmongo import options_initialize
 from pfmongo.commands import smash
 import pudb
