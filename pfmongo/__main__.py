@@ -1,99 +1,75 @@
-#!/usr/bin/env python3
-#
-# (c) 2023+ Fetal-Neonatal Neuroimaging & Developmental Science Center
-#                   Boston Children's Hospital
-#
-#              http://childrenshospital.org/FNNDSC/
-#                        dev@babyMRI.org
-#
+"""
+Program entry point for the pfmongo CLI.
 
-__version__ = "0.9.152"
+This module initializes the application, processes arguments using
+argparse, and invokes the main Click application defined in app_core.py.
+"""
 
-from os.path import normpath
 import sys
-
-from pfmongo import pfmongo
-from pfmongo import env
-from pfmongo.commands import fs
+import re
+from argparse import ArgumentParser, Namespace
+from typing import Sequence, Optional
 from pfmongo.pfmongo import (
     options_initialize,
     parser_setup,
     parser_interpret,
-    parser_JSONinterpret,
 )
+from pfmongo import env
+from pfmongo.app_core import app
+from pfmongo.commands import man
 
-try:
-    from . import __pkg, __version__
-except:
-    from pfmongo import __pkg, __version__
 
-from argparse import ArgumentParser, Namespace
-import pudb
-from pfmisc import Colors as C
-from typing import Any, Literal, Sequence
-from pfmongo.config import settings
-from pfmongo.models import dataModel
-from pathlib import Path
-import appdirs
-import click
-from click.formatting import wrap_text
-import re
-from pfmongo.commands import database, collection, fs, man, state, document, smash
-
-NC = C.NO_COLOUR
-GR = C.GREEN
-CY = C.CYAN
-
+# Global options namespace
 options: Namespace = Namespace()
 
 
 def namespace_pubattribs(space: Namespace) -> list[str]:
+    """
+    Retrieve public attributes from a Namespace object.
+
+    :param space: The Namespace object to analyze.
+    :return: A list of public attribute names.
+    """
     attributes: list[str] = re.findall(r"\b([A-Za-z][A-Za-z_0-9]*)=", str(space))
     return attributes
 
 
 def sysargv_revamp(newarg: list[str]) -> list[str]:
     """
-    Small but crucial method for "revamping" the sys.argv list that
-    is passed to the main click function.
+    Revamp sys.argv for Click command-line parsing.
 
-    The new list is returned in addition to being set in the sys
-    module.
+    Replaces the current sys.argv with a new set of arguments
+    while preserving the executable name.
 
-    :param newarg: a string list of "new" arguments
+    :param newarg: A list of new arguments to set.
+    :return: The updated sys.argv list.
     """
     executable: str = sys.argv[0]
-    sys.argv = []
-    sys.argv.append(executable)
-    sys.argv.extend(newarg)
+    sys.argv = [executable] + newarg
     return sys.argv
 
 
-def main(argv: Sequence[str] = []) -> int:
+def cli_entry_point(argv: Optional[list[str]] = None) -> int:
     """
-    The main entry point to the program. Can also be called from Python by
-    passing along a "pseudo" argv list of strings (note the first element of
-    the list MUST be the executable name).
+    Core logic for CLI entry, testable separately from Click.
 
-    The "core" CLI args are processed here as well as some environmental checks
-    are performed. If necessary, the application will "terminate" from this
-    method before routing to the subcommands/groups.
+    This function processes core CLI arguments using argparse,
+    checks environmental configurations, and prepares for Click dispatch.
 
-    This function demonstrates a design pattern that mixes argparse and click
-    parsing, hopefully leveraging something of the best of both worlds.
-
-    :param argv: a CLI argv list of strings.
+    :param argv: A list of CLI arguments (e.g., `["--man"]`).
+    :return: 0 on success, or an error code on failure.
     """
     global options
-    # pudb.set_trace()
+    argv = argv or sys.argv[1:]
     add_help: bool = False
-    parser: ArgumentParser = parser_setup(
-        "A client for interacting with mongo DBs", add_help
-    )
 
-    # Should we show (and exit) some man page help?
+    # Set up and parse arguments using argparse
+    parser: ArgumentParser = parser_setup(
+        "A client for interacting with MongoDB.", add_help
+    )
     options, extra = parser_interpret(parser, argv)
 
+    # Verify environmental state path
     if not env.env_statePathSet(options):
         return 10
 
@@ -101,45 +77,23 @@ def main(argv: Sequence[str] = []) -> int:
     if man.coreOptions_show(options):
         return man.man(options)
 
-    # the click "app" interprets sys.argv, hence the revamping here
-    newargv: list[str] = sysargv_revamp(extra)
+    # Update sys.argv for Click
+    sysargv_revamp(extra)
     return app()
 
 
-@click.group(cls=env.CustomGroup, help=pfmongo.package_description)
-@click.option("--man", is_flag=True, help="show more detail about core OPTIONS")
-@click.option("--version", is_flag=True, help="show program version")
-@click.pass_context
-def app(ctx: click.Context, man: bool, version: bool) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     """
-    The main "app" -- it mostly serves as a point to route to the
-    various subcommands and provide some in-line help.
+    Entry point for the CLI application.
 
-    Note the --man and --version are added as options here only to
-    be picked up by the "--help", but they are in fact handled by
-    the parent main() method.
-
-    :param ctx: a click "context" -- it is expanded here to transmit additional
-                information to subcommands.
-    :param man: a CLI --man parameter used to dispatch to the argparse handler
-    :return: simply returns a 0:success or <N>:failure
+    This wraps the core CLI logic (`cli_entry_point`) to allow system exit handling
+    during normal execution.
     """
-
-    global options
-    if not namespace_pubattribs(options):
-        options = options_initialize()
-    ctx.obj = {}
-    ctx.obj["options"] = options
-
-    subcommand: str | None = click.get_current_context().invoked_subcommand
-
-    return 0
+    try:
+        return cli_entry_point(argv)
+    except SystemExit as e:
+        return e.code
 
 
-app.add_command(database.database)
-app.add_command(collection.collection)
-app.add_command(fs.fs)
-app.add_command(state.state)
-app.add_command(document.document)
-app.add_command(smash.smash)
-# app.add_command(man.man)
+if __name__ == "__main__":
+    sys.exit(main())
